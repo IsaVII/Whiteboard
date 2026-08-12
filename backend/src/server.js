@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
+const { registerSocketHandlers } = require("./socket/socketHandlers");
 
 const app = express();
 
@@ -36,3 +37,5 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+
+registerSocketHandlers(io);
