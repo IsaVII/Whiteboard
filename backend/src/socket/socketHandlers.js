@@ -37,14 +37,21 @@ function getColorForUser(userName) {
 }
 
 function registerSocketHandlers(io) {
+  console.log("[socket] Socket.IO handler registration started");
+
   io.on("connection", (socket) => {
     const anonymousName = generateAnonymousName();
     socket.data.anonymousName = anonymousName;
 
-    console.log(`[socket] ${socket.id} connected as "${anonymousName}"`);
+    console.log(
+      `[socket] Client connected - ID: ${socket.id}, Name: "${anonymousName}"`,
+    );
 
     // User joins a specific board - emitted by client after connecting
     socket.on("join-board", (boardId) => {
+      console.log(
+        `[socket] join-board event received - Socket ID: ${socket.id}, Board: ${boardId}`,
+      );
       socket.data.boardId = boardId;
       socket.join(boardId);
 

@@ -6,6 +6,7 @@ import "./App.css";
 import Header from "./components/Header";
 import Whiteboard from "./pages/Whiteboard";
 import Footer from "./components/Footer";
+import DebugPanel from "./components/DebugPanel";
 import { socket } from "./redux/services/socket";
 
 import {
@@ -34,12 +35,16 @@ function App() {
   useEffect(() => {
     //board connection
     function handleConnect() {
-      console.log("[socket] Connected to server");
+      console.log("[socket] Connected to server with socket ID:", socket.id);
       dispatch(connectionStatusChanged(true));
+      console.log(
+        `[socket] Emitting join-board event for board: ${DEFAULT_BOARD_ID}`,
+      );
       socket.emit("join-board", DEFAULT_BOARD_ID);
     }
 
     function handleDisconnect() {
+      console.log("[socket] Disconnected from server");
       dispatch(connectionStatusChanged(false));
     }
 
@@ -92,6 +97,7 @@ function App() {
       <Header />
       <Whiteboard />
       <Footer />
+      <DebugPanel />
     </>
   );
 }
