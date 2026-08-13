@@ -2,6 +2,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useRef, useState } from "react";
 import { socket } from "../../redux/services/socket";
 import RemoteCursor from "./RemoteCursor";
+import CanvasElement from "./CanvasElement";
 import "./Canvas.css";
 
 const CURSOR_EMIT_INTERVAL_MS = 40;
@@ -13,6 +14,7 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const Canvas = () => {
   const dispatch = useDispatch();
   const boardId = useSelector((state) => state.board.boardId);
+  const elements = useSelector((state) => state.board.elements);
   const cursors = useSelector((state) => state.user.cursors);
   const canvasRef = useRef(null);
   const lastCursorEmitRef = useRef(0);
@@ -138,7 +140,7 @@ const Canvas = () => {
       const scale = clamp(
         gesture.startScale * (distance / gesture.startDistance),
         MIN_SCALE,
-        MAX_SCALE
+        MAX_SCALE,
       );
       const mid = getTouchMidpoint(touches);
 
@@ -215,6 +217,16 @@ const Canvas = () => {
           transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
         }}
       >
+        {/* SHAPES & TEXTBOXES */}
+        {elements.map((element) => (
+          <CanvasElement
+            key={element.id}
+            element={element}
+            boardId={boardId}
+            scale={viewport.scale}
+          />
+        ))}
+
         {/* CURSORS */}
         {Object.entries(cursors).map(([socketId, cursor]) => (
           <RemoteCursor
@@ -227,6 +239,7 @@ const Canvas = () => {
         ))}
       </div>
 
+      {/* Zoom controls */}
       <div className="canvas-zoom-controls">
         <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">
           +

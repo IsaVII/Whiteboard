@@ -1,5 +1,12 @@
 import { useEffect } from "react";
-import { loadBoard } from "./redux/slices/boardSlice";
+import {
+  loadBoard,
+  connectionStatusChanged,
+  elementsLoaded,
+  elementAdded,
+  elementUpdated,
+  elementRemoved,
+} from "./redux/slices/boardSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import "./App.css";
@@ -15,7 +22,6 @@ import {
   cursorMoved,
   cursorLeft,
 } from "./redux/slices/userSlice";
-import { connectionStatusChanged } from "./redux/slices/boardSlice";
 
 const SOCKET_SERVER_URL =
   import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
@@ -69,12 +75,36 @@ function App() {
       dispatch(cursorLeft({ socketId }));
     }
 
+    // Snapshot of shapes/textboxes sent right after joining a board
+    function handleElementsLoaded({ elements }) {
+      dispatch(elementsLoaded(elements));
+    }
+
+    // Another user added a shape/textbox
+    function handleElementAdded({ element }) {
+      dispatch(elementAdded(element));
+    }
+
+    // Another user dragged or edited a shape/textbox
+    function handleElementUpdated({ elementId, updates }) {
+      dispatch(elementUpdated({ elementId, updates }));
+    }
+
+    // Another user deleted a shape/textbox
+    function handleElementRemoved({ elementId }) {
+      dispatch(elementRemoved({ elementId }));
+    }
+
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("assigned-name", handleAssignedName);
     socket.on("user-list", handleUserList);
     socket.on("cursor-move", handleCursorMove);
     socket.on("cursor-left", handleCursorLeft);
+    socket.on("elements-loaded", handleElementsLoaded);
+    socket.on("element-added", handleElementAdded);
+    socket.on("element-updated", handleElementUpdated);
+    socket.on("element-removed", handleElementRemoved);
 
     // If the socket is already connected by the time this effect runs
     // (e.g. fast refresh), fire the join manually.
@@ -89,6 +119,10 @@ function App() {
       socket.off("user-list", handleUserList);
       socket.off("cursor-move", handleCursorMove);
       socket.off("cursor-left", handleCursorLeft);
+      socket.off("elements-loaded", handleElementsLoaded);
+      socket.off("element-added", handleElementAdded);
+      socket.off("element-updated", handleElementUpdated);
+      socket.off("element-removed", handleElementRemoved);
     };
   }, [dispatch]);
 

@@ -14,8 +14,8 @@ const boardSlice = createSlice({
   initialState: {
     boardId: null,
     content: "",
-    elements: [], // Array of {id, type, x, y, width, height, content, createdBy}
-    selectedToolType: null, // 'textbox', 'radio', 'sticky', or null
+    elements: [], // Array of {id, type, shapeType, x, y, width, height, content, createdBy}
+    selectedToolType: "rectangle", // last shape picked from the toolbar dropdown
     status: "idle", // idle | loading | ready | error
     connected: false,
     lastEditor: null,
@@ -23,6 +23,35 @@ const boardSlice = createSlice({
   reducers: {
     connectionStatusChanged(state, action) {
       state.connected = action.payload;
+    },
+    // Remembers the last shape picked from the toolbar dropdown so the
+    // main button icon and the short-press action reflect it.
+    toolTypeSelected(state, action) {
+      state.selectedToolType = action.payload;
+    },
+    // Snapshot sent by the server right after join-board.
+    elementsLoaded(state, action) {
+      state.elements = action.payload || [];
+    },
+    elementAdded(state, action) {
+      const element = action.payload;
+      // Guard against double-adds (e.g. our own optimistic add racing
+      // with a server echo).
+      if (!state.elements.some((el) => el.id === element.id)) {
+        state.elements.push(element);
+      }
+    },
+    elementUpdated(state, action) {
+      const { elementId, updates } = action.payload;
+      const element = state.elements.find((el) => el.id === elementId);
+      if (element) {
+        Object.assign(element, updates);
+      }
+    },
+    elementRemoved(state, action) {
+      state.elements = state.elements.filter(
+        (el) => el.id !== action.payload.elementId,
+      );
     },
   },
   extraReducers: (builder) => {
@@ -43,5 +72,12 @@ const boardSlice = createSlice({
   },
 });
 
-export const { connectionStatusChanged } = boardSlice.actions;
+export const {
+  connectionStatusChanged,
+  toolTypeSelected,
+  elementsLoaded,
+  elementAdded,
+  elementUpdated,
+  elementRemoved,
+} = boardSlice.actions;
 export default boardSlice.reducer;

@@ -57,7 +57,7 @@ function registerSocketHandlers(io) {
 
     // Client emits this right after connecting, once it knows which board
     // (e.g. from the URL) it wants to join.
-    socket.on("join-board", (boardId) => {
+    socket.on("join-board", async (boardId) => {
       socket.data.boardId = boardId;
       socket.join(boardId);
 
@@ -74,11 +74,41 @@ function registerSocketHandlers(io) {
       // Tell everyone in the room (including the new user) the current roster
       io.to(boardId).emit("user-list", getUsersInRoom(boardId));
 
-      // Send current board state to the joining user
-      if (boardState.has(boardId)) {
-        const board = boardState.get(boardId);
-        socket.emit("elements-loaded", { elements: board.elements || [] });
+      // Load board state from database if not already in memory
+      if (!boardState.has(boardId)) {
+        try {
+          const dbBoard = await Board.findOne({ boardId });
+          if (dbBoard) {
+            boardState.set(boardId, {
+              content: dbBoard.content || "",
+              elements: dbBoard.elements || [],
+              lastEditedBy: dbBoard.lastEditedBy,
+            });
+          } else {
+            // Create empty board state if it doesn't exist
+            boardState.set(boardId, {
+              content: "",
+              elements: [],
+              lastEditedBy: null,
+            });
+          }
+        } catch (err) {
+          console.error(
+            `[socket] Failed to load board ${boardId} from DB:`,
+            err.message,
+          );
+          // Fall back to empty state
+          boardState.set(boardId, {
+            content: "",
+            elements: [],
+            lastEditedBy: null,
+          });
+        }
       }
+
+      // Send current board state to the joining user
+      const board = boardState.get(boardId);
+      socket.emit("elements-loaded", { elements: board.elements || [] });
 
       // Let others know someone joined
       socket.to(boardId).emit("user-joined", { name: anonymousName });

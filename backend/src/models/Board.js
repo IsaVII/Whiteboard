@@ -13,18 +13,25 @@ const boardSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    elements: [
-      {
-        id: String,
-        type: String, // 'textbox', 'radio', 'sticky', etc.
-        x: Number,
-        y: Number,
-        width: Number,
-        height: Number,
-        content: String,
-        createdBy: String,
-      },
-    ],
+    elements: {
+      type: [
+        new mongoose.Schema(
+          {
+            id: String,
+            type: String, // 'textbox', 'radio', 'sticky', etc.
+            shapeType: String, // 'rectangle', 'circle', 'triangle', etc.
+            x: Number,
+            y: Number,
+            width: Number,
+            height: Number,
+            content: String,
+            createdBy: String,
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     lastEditedBy: {
       type: String, // anonymous display name, e.g. "Anonymous Elephant"
       default: null,

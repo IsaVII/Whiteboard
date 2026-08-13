@@ -24,7 +24,9 @@ const getSocketUrl = () => {
         `[socket] Ignoring VITE_SOCKET_URL="${envUrl}" because the page was loaded from "${hostname}", not localhost. Falling back to dynamic hostname.`,
       );
     } catch (err) {
-      console.warn(`[socket] Invalid VITE_SOCKET_URL="${envUrl}", falling back to dynamic hostname.`);
+      console.warn(
+        `[socket] Invalid VITE_SOCKET_URL="${envUrl}", falling back to dynamic hostname.`,
+      );
     }
   }
 
@@ -42,6 +44,8 @@ console.log(`[socket] Connecting to: ${SOCKET_URL}`);
 // (default), so importing this module opens the connection.
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
+  withCredentials: true,
+  transports: ["websocket", "polling"],
 });
 
 socket.on("connect", () => {
