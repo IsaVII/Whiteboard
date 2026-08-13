@@ -4,6 +4,7 @@ const initialState = {
   name: "",
   color: "",
   usersInRoom: [],
+  cursors: {},
 };
 
 const userSlice = createSlice({
@@ -14,25 +15,19 @@ const userSlice = createSlice({
       state.name = action.payload.name;
       state.color = action.payload.color || "";
     },
-    setUsersInRoom: (state, action) => {
+    userListUpdated(state, action) {
       state.usersInRoom = action.payload;
     },
-    addUserToRoom: (state, action) => {
-      const userExists = state.usersInRoom.some(
-        (user) => user.name === action.payload.name,
-      );
-      if (!userExists) {
-        state.usersInRoom.push(action.payload);
-      }
+    cursorMoved(state, action) {
+      const { socketId, name, color, x, y } = action.payload;
+      state.cursors[socketId] = { name, color, x, y };
     },
-    removeUserFromRoom: (state, action) => {
-      state.usersInRoom = state.usersInRoom.filter(
-        (user) => user.name !== action.payload.name,
-      );
+    cursorLeft(state, action) {
+      delete state.cursors[action.payload.socketId];
     },
   },
 });
 
-export const { setName, setUsersInRoom, addUserToRoom, removeUserFromRoom } =
+export const { setName, userListUpdated, cursorMoved, cursorLeft } =
   userSlice.actions;
 export default userSlice.reducer;

@@ -70,6 +70,41 @@ function registerSocketHandlers(io) {
       // Let others know someone joined
       socket.to(boardId).emit("user-joined", userObject);
     });
+
+    // Handle cursor movement from this client
+    socket.on("cursor-move", ({ boardId, x, y }) => {
+      if (!boardId) {
+        console.error("Board ID is not set. Cannot emit cursor position.");
+        return;
+      }
+
+      socket.to(boardId).emit("cursor-move", {
+        socketId: socket.id,
+        name: anonymousName,
+        color: roomUsers.get(boardId).get(socket.id).color,
+        x,
+        y,
+      });
+    });
+
+    // Clean up user tracking and board state when user disconnects
+    socket.on("disconnect", () => {
+      const { boardId } = socket.data;
+      console.log(`[socket] ${socket.id} ("${anonymousName}") disconnected`);
+
+      if (boardId && roomUsers.has(boardId)) {
+        roomUsers.get(boardId).delete(socket.id);
+        io.to(boardId).emit("user-list", getUsersInRoom(boardId));
+        socket.to(boardId).emit("user-left", { name: anonymousName });
+        // Remove their cursor from everyone else's screen
+        socket.to(boardId).emit("cursor-left", { socketId: socket.id });
+
+        if (roomUsers.get(boardId).size === 0) {
+          roomUsers.delete(boardId);
+          boardState.delete(boardId); // Clean up board state when room is empty
+        }
+      }
+    });
   });
 }
 

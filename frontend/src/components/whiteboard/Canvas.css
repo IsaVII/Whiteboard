@@ -1,0 +1,11 @@
+.canvas {
+    position: relative;
+    width: 100%;
+    min-height: 60vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: crosshair;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
