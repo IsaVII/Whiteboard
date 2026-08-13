@@ -34,6 +34,19 @@ const ANIMALS = [
   "Lynx",
 ];
 
+const COLORS = [
+  "bg-yellow-400",
+  "bg-blue-400",
+  "bg-purple-400",
+  "bg-pink-400",
+  "bg-green-400",
+  "bg-red-400",
+  "bg-indigo-400",
+  "bg-cyan-400",
+  "bg-orange-400",
+  "bg-teal-400",
+];
+
 // Select random item from array
 function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -47,4 +60,9 @@ function generateAnonymousName() {
   return `${adjective} ${animal}`;
 }
 
-module.exports = { generateAnonymousName };
+// Generate a random Tailwind color class for user badges
+function generateRandomColor() {
+  return randomFrom(COLORS);
+}
+
+module.exports = { generateAnonymousName, generateRandomColor };

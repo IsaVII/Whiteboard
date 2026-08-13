@@ -3,123 +3,90 @@ require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
-const mongoose = require("mongoose");
 const { Server } = require("socket.io");
-const { registerSocketHandlers } = require("./socket/socketHandlers");
-const boardRoutes = require("./routes/boardRoutes");
 
-const app = express();
+const os = require("os");
+
+const connectDB = require("./config/db");
+const boardRoutes = require("./routes/boardRoutes");
+const registerSocketHandlers = require("./socket/socketHandlers");
+
+function getLanIPs() {
+  const nets = os.networkInterfaces();
+  const addresses = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === "IPv4" && !net.internal) {
+        addresses.push(net.address);
+      }
+    }
+  }
+  return addresses;
+}
 
 const PORT = process.env.PORT || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
-const MONGODB_URI = process.env.MONGODB_URI;
+const NODE_ENV = process.env.NODE_ENV || "development";
 
-// CORS configuration - simplified for development
-const corsOptions = {
-  origin: "*", // Allow all origins in development for polling to work
-  methods: ["GET", "POST", "OPTIONS"],
-  credentials: false,
-  allowedHeaders: ["Content-Type"],
+// CLIENT_ORIGIN can be a single origin or a comma-separated list, e.g.
+// "http://localhost:5173,http://192.168.0.145:5173"
+const extraOrigins = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const staticOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...extraOrigins,
+];
+
+// Matches http(s)://<private-LAN-IP>:<any-port>, e.g. 192.168.x.x, 10.x.x.x,
+// 172.16-31.x.x. This lets any device on your LAN connect (phone, tablet,
+// another laptop) without hand-editing CLIENT_ORIGIN every time an IP
+// changes. Dev-only — tighten this before deploying anywhere public.
+const LAN_ORIGIN_REGEX =
+  /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+function isAllowedOrigin(origin) {
+  // No origin header (e.g. curl, server-to-server, some health checks)
+  if (!origin) return true;
+  if (staticOrigins.includes(origin)) return true;
+  if (NODE_ENV !== "production" && LAN_ORIGIN_REGEX.test(origin)) return true;
+  return false;
+}
+
+const corsOriginHandler = (origin, callback) => {
+  if (isAllowedOrigin(origin)) {
+    callback(null, true);
+  } else {
+    console.warn(`[cors] Rejected origin: ${origin}`);
+    callback(new Error("Not allowed by CORS"));
+  }
 };
 
-app.use(cors(corsOptions));
-
-// Log all requests for debugging
-app.use((req, res, next) => {
-  console.log(`[server] ${req.method} ${req.path} from ${req.ip}`);
-  next();
-});
-
+const app = express();
+app.use(cors({ origin: corsOriginHandler }));
 app.use(express.json());
 
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-  console.log("[server] Health check from:", req.get("origin"));
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Debug endpoint
-app.get("/api/test", (req, res) => {
-  console.log("[server] Test endpoint from:", req.get("origin"));
-  res.json({ message: "Backend OK!", timestamp: new Date().toISOString() });
-});
-
-// Board routes
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/boards", boardRoutes);
 
-// Connect to MongoDB
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err);
-    process.exit(1);
-  });
-
 const server = http.createServer(app);
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[server] ✅ HTTP Server running on port ${PORT}`);
-  console.log(`[server] Localhost: http://localhost:${PORT}`);
-  console.log(`[server] Test backend: http://localhost:${PORT}/api/test`);
-});
 
-// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: corsOriginHandler,
     methods: ["GET", "POST"],
-    credentials: false,
   },
-  transports: ["polling", "websocket"], // Try polling first for mobile reliability
-  allowUpgrades: true,
-  pingInterval: 25000,
-  pingTimeout: 20000,
-  maxHttpBufferSize: 1e6, // 1MB
-  path: "/socket.io",
-});
-
-console.log(
-  "[server] Socket.IO server initialized with transports: polling, websocket",
-);
-
-// Log when socket connects and what transport is used
-io.on("connection", (socket) => {
-  const transport = socket.conn.transport.name;
-  console.log(
-    `[server] ✅ New connection - Socket ID: ${socket.id}, Transport: ${transport}`,
-  );
-
-  // Log when socket reconnects or upgrades transport
-  socket.conn.on("upgrade", (newTransport) => {
-    console.log(
-      `[server] 📡 Socket ${socket.id} upgraded to transport: ${newTransport.name}`,
-    );
-  });
-
-  socket.on("disconnect", (reason) => {
-    console.log(
-      `[server] ❌ Socket ${socket.id} disconnected. Reason: ${reason}`,
-    );
-  });
-});
-
-// Log engine errors
-io.engine.on("connection_error", (err) => {
-  console.error(
-    "[server] 🚨 Engine connection error:",
-    err.code,
-    err.message,
-    err.context?.url,
-  );
-});
-
-io.engine.on("upgrade_error", (err) => {
-  console.warn(
-    "[server] ⚠️ Engine upgrade error (can be ignored if polling works):",
-    err.message,
-  );
 });
 
 registerSocketHandlers(io);
+
+connectDB().then(() => {
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`[server] listening on http://0.0.0.0:${PORT}`);
+    getLanIPs().forEach((ip) => {
+      console.log(`[server] accessible at http://${ip}:${PORT}`);
+    });
+  });
+});

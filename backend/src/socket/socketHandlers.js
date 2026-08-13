@@ -1,18 +1,38 @@
-const { generateAnonymousName } = require("../utils/nameGenerator");
+const Board = require("../models/Board");
+const {
+  generateAnonymousName,
+  generateRandomColor,
+} = require("../utils/nameGenerator");
 
-// Color palette for user badges
-const BADGE_COLORS = [
-  "bg-blue-400",
-  "bg-purple-400",
-  "bg-pink-400",
-  "bg-green-400",
-  "bg-yellow-400",
-  "bg-red-400",
-  "bg-indigo-400",
-  "bg-cyan-400",
-  "bg-orange-400",
-  "bg-teal-400",
-];
+// Debounce DB writes per board so we don't hit MongoDB on every keystroke
+// from every user. Each board gets its own timer.
+const saveTimers = new Map();
+const SAVE_DELAY_MS = 800;
+
+function scheduleSave(boardId, board) {
+  if (saveTimers.has(boardId)) {
+    clearTimeout(saveTimers.get(boardId));
+  }
+
+  const timer = setTimeout(async () => {
+    try {
+      await Board.findOneAndUpdate(
+        { boardId },
+        {
+          content: board.content,
+          elements: board.elements,
+          lastEditedBy: board.lastEditedBy,
+        },
+        { upsert: true },
+      );
+    } catch (err) {
+      console.error(`[socket] failed to save board ${boardId}:`, err.message);
+    }
+    saveTimers.delete(boardId);
+  }, SAVE_DELAY_MS);
+
+  saveTimers.set(boardId, timer);
+}
 
 // Tracks who's currently in each board room: Map<boardId, Map<socketId, {name, color}>>
 const roomUsers = new Map();
@@ -24,52 +44,31 @@ function getUsersInRoom(boardId) {
   return users ? Array.from(users.values()) : [];
 }
 
-// Generate a consistent color for a user based on their name
-function getColorForUser(userName) {
-  let hash = 0;
-  for (let i = 0; i < userName.length; i++) {
-    const char = userName.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  const colorIndex = Math.abs(hash) % BADGE_COLORS.length;
-  return BADGE_COLORS[colorIndex];
-}
-
 function registerSocketHandlers(io) {
-  console.log("[socket] Socket.IO handler registration started");
-
   io.on("connection", (socket) => {
     const anonymousName = generateAnonymousName();
+    const userColor = generateRandomColor();
     socket.data.anonymousName = anonymousName;
+    socket.data.userColor = userColor;
 
     console.log(
-      `[socket] Client connected - ID: ${socket.id}, Name: "${anonymousName}"`,
+      `[socket] ${socket.id} connected as "${anonymousName}" (${userColor})`,
     );
 
-    // User joins a specific board - emitted by client after connecting
+    // Client emits this right after connecting, once it knows which board
+    // (e.g. from the URL) it wants to join.
     socket.on("join-board", (boardId) => {
-      console.log(
-        `[socket] join-board event received - Socket ID: ${socket.id}, Board: ${boardId}`,
-      );
       socket.data.boardId = boardId;
       socket.join(boardId);
 
       if (!roomUsers.has(boardId)) {
         roomUsers.set(boardId, new Map());
       }
+      roomUsers
+        .get(boardId)
+        .set(socket.id, { name: anonymousName, color: userColor });
 
-      // Assign a color based on user's name (consistent color per user)
-      const userColor = getColorForUser(anonymousName);
-      const userObject = { name: anonymousName, color: userColor };
-
-      roomUsers.get(boardId).set(socket.id, userObject);
-      socket.data.userColor = userColor;
-      console.log(
-        `[socket] ${anonymousName} joined board ${boardId} with color ${userColor}`,
-      );
-
-      // Tell the joining user who they are and their color
+      // Tell the joining user who they are
       socket.emit("assigned-name", { name: anonymousName, color: userColor });
 
       // Tell everyone in the room (including the new user) the current roster
@@ -82,26 +81,115 @@ function registerSocketHandlers(io) {
       }
 
       // Let others know someone joined
-      socket.to(boardId).emit("user-joined", userObject);
+      socket.to(boardId).emit("user-joined", { name: anonymousName });
     });
 
-    // Handle cursor movement from this client
-    socket.on("cursor-move", ({ boardId, x, y }) => {
-      if (!boardId) {
-        console.error("Board ID is not set. Cannot emit cursor position.");
-        return;
+    // Client emits this on every text change (ideally throttled/debounced
+    // client-side too, e.g. every 100-200ms while typing).
+    socket.on("content-change", ({ boardId, content }) => {
+      if (!boardId) return;
+
+      // Update in-memory board state
+      if (!boardState.has(boardId)) {
+        boardState.set(boardId, {
+          content,
+          elements: [],
+          lastEditedBy: anonymousName,
+        });
       }
+      const board = boardState.get(boardId);
+      board.content = content;
+      board.lastEditedBy = anonymousName;
+
+      // Broadcast to everyone else in the room immediately for live sync
+      socket.to(boardId).emit("content-change", {
+        content,
+        editor: anonymousName,
+      });
+
+      // Persist in the background, debounced
+      scheduleSave(boardId, board);
+    });
+
+    // Live cursor position broadcast. Purely ephemeral - never written to
+    // boardState/MongoDB, just relayed to everyone else in the room.
+    socket.on("cursor-move", ({ boardId, x, y }) => {
+      if (!boardId) return;
 
       socket.to(boardId).emit("cursor-move", {
         socketId: socket.id,
         name: anonymousName,
-        color: socket.data.userColor,
+        color: userColor,
         x,
         y,
       });
     });
 
-    // Clean up user tracking and board state when user disconnects
+    // Handle new element creation
+    socket.on("element-added", ({ boardId, element }) => {
+      if (!boardId) return;
+
+      // Update in-memory board state
+      if (!boardState.has(boardId)) {
+        boardState.set(boardId, {
+          content: "",
+          elements: [],
+          lastEditedBy: anonymousName,
+        });
+      }
+      const board = boardState.get(boardId);
+      board.elements.push(element);
+
+      // Broadcast to everyone else in the room. The sender already added
+      // the element to its own local state, so echoing it back with io.to()
+      // would create a duplicate (and a duplicate React key).
+      socket.to(boardId).emit("element-added", { element });
+
+      // Persist in the background, debounced
+      scheduleSave(boardId, board);
+    });
+
+    // Handle element position/content updates
+    socket.on("element-updated", ({ boardId, elementId, updates }) => {
+      if (!boardId) return;
+
+      // Update in-memory board state
+      if (boardState.has(boardId)) {
+        const board = boardState.get(boardId);
+        const element = board.elements.find((el) => el.id === elementId);
+        if (element) {
+          Object.assign(element, updates);
+        }
+      }
+
+      // Broadcast to everyone else in the room
+      socket.to(boardId).emit("element-updated", { elementId, updates });
+
+      // Persist in the background, debounced
+      if (boardState.has(boardId)) {
+        scheduleSave(boardId, boardState.get(boardId));
+      }
+    });
+
+    // Handle element deletion
+    socket.on("element-removed", ({ boardId, elementId }) => {
+      if (!boardId) return;
+
+      // Update in-memory board state
+      if (boardState.has(boardId)) {
+        const board = boardState.get(boardId);
+        board.elements = board.elements.filter((el) => el.id !== elementId);
+      }
+
+      // Broadcast to everyone in the room
+      io.to(boardId).emit("element-removed", { elementId });
+
+      // Persist in the background, debounced
+      if (boardState.has(boardId)) {
+        scheduleSave(boardId, boardState.get(boardId));
+      }
+    });
+
     socket.on("disconnect", () => {
       const { boardId } = socket.data;
       console.log(`[socket] ${socket.id} ("${anonymousName}") disconnected`);
@@ -122,4 +210,4 @@ function registerSocketHandlers(io) {
   });
 }
 
-module.exports = { registerSocketHandlers };
+module.exports = registerSocketHandlers;
