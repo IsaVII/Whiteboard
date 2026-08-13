@@ -24,10 +24,16 @@ function getUsersInRoom(boardId) {
   return users ? Array.from(users.values()) : [];
 }
 
-function getNextColorForRoom(boardId) {
-  const users = roomUsers.get(boardId);
-  const userCount = users ? users.size : 0;
-  return BADGE_COLORS[userCount % BADGE_COLORS.length];
+// Generate a consistent color for a user based on their name
+function getColorForUser(userName) {
+  let hash = 0;
+  for (let i = 0; i < userName.length; i++) {
+    const char = userName.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  const colorIndex = Math.abs(hash) % BADGE_COLORS.length;
+  return BADGE_COLORS[colorIndex];
 }
 
 function registerSocketHandlers(io) {
@@ -46,11 +52,12 @@ function registerSocketHandlers(io) {
         roomUsers.set(boardId, new Map());
       }
 
-      // Assign a color based on user count in the room
-      const userColor = getNextColorForRoom(boardId);
+      // Assign a color based on user's name (consistent color per user)
+      const userColor = getColorForUser(anonymousName);
       const userObject = { name: anonymousName, color: userColor };
 
       roomUsers.get(boardId).set(socket.id, userObject);
+      socket.data.userColor = userColor;
       console.log(
         `[socket] ${anonymousName} joined board ${boardId} with color ${userColor}`,
       );
@@ -81,7 +88,7 @@ function registerSocketHandlers(io) {
       socket.to(boardId).emit("cursor-move", {
         socketId: socket.id,
         name: anonymousName,
-        color: roomUsers.get(boardId).get(socket.id).color,
+        color: socket.data.userColor,
         x,
         y,
       });
