@@ -85,13 +85,12 @@ const Toolbar = () => {
     socket.emit("element-added", { boardId, element });
   };
 
-  const handleShapeShortPress = () => {
+  const handleShapeClick = () => {
     spawnElement("shape", selectedToolType);
-    setDropdownOpen(false);
   };
 
-  const handleShapeLongPress = () => {
-    setDropdownOpen(true);
+  const handleShapeArrowClick = () => {
+    setDropdownOpen(!dropdownOpen);
   };
 
   const handleShapeOptionClick = (type) => {
@@ -111,34 +110,33 @@ const Toolbar = () => {
     <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-[10px] shadow-sm w-fit mx-auto my-3">
       <div ref={dropdownRef} className="relative">
         <ToolbarButton
-          icon={activeShape.icon}
-          label={`Add ${activeShape.label} (hold for more shapes)`}
-          onClick={handleShapeShortPress}
-          onLongPress={handleShapeLongPress}
+          showArrow={SHAPE_OPTIONS.length > 1}
+          onArrowClick={handleShapeArrowClick}
+          onClick={handleShapeClick}
           active={dropdownOpen}
+          title={`Add ${activeShape.label}`}
         >
-          {dropdownOpen && (
-            <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 flex flex-col gap-0.5 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 z-50 min-w-[150px]">
-              {SHAPE_OPTIONS.map((option) => (
-                <button
-                  key={option.type}
-                  type="button"
-                  className={`flex items-center gap-2 px-2.5 py-1.5 border-0 bg-transparent rounded-md text-xs text-gray-700 cursor-pointer text-left hover:bg-gray-100 transition-colors ${
-                    option.type === selectedToolType
-                      ? "bg-indigo-100 text-indigo-700 font-semibold"
-                      : ""
-                  }`}
-                  onClick={() => handleShapeOptionClick(option.type)}
-                >
-                  <span className="text-sm w-4.5 text-center">
-                    {option.icon}
-                  </span>
-                  <span>{option.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {activeShape.icon}
         </ToolbarButton>
+        {dropdownOpen && (
+          <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 flex flex-col gap-0.5 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 z-50 min-w-[150px]">
+            {SHAPE_OPTIONS.map((option) => (
+              <button
+                key={option.type}
+                type="button"
+                className={`flex items-center gap-2 px-2.5 py-1.5 border-0 bg-transparent rounded-md text-xs text-gray-700 cursor-pointer text-left hover:bg-gray-100 transition-colors ${
+                  option.type === selectedToolType
+                    ? "bg-indigo-100 text-indigo-700 font-semibold"
+                    : ""
+                }`}
+                onClick={() => handleShapeOptionClick(option.type)}
+              >
+                <span className="text-sm w-4.5 text-center">{option.icon}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <ToolbarButton icon="T" label="Add text box" onClick={handleTextClick} />

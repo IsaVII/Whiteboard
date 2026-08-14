@@ -24,6 +24,9 @@ const TONE_CLASSES = {
  * position) — never re-set color/background/border there, or it can
  * silently conflict with the tone classes depending on Tailwind's
  * generated stylesheet order.
+ *
+ * `showArrow` - if true, displays a dropdown arrow on the right side of the button
+ * `onArrowClick` - callback when the dropdown arrow is clicked
  */
 const ToolbarButton = ({
   active = false,
@@ -34,6 +37,8 @@ const ToolbarButton = ({
   className = "",
   hidden,
   keepFocusOnTextarea = false,
+  showArrow = false,
+  onArrowClick,
   ...rest
 }) => {
   const toneClasses = TONE_CLASSES[tone][active ? "active" : "inactive"];
@@ -59,6 +64,44 @@ const ToolbarButton = ({
   const handleDoubleClick = (e) => {
     e.stopPropagation();
   };
+
+  const handleArrowClick = (e) => {
+    e.stopPropagation();
+    onArrowClick?.(e);
+  };
+
+  if (showArrow && onArrowClick) {
+    return (
+      <div className="flex items-center relative">
+        <button
+          type="button"
+          title={title}
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
+          className={`${BASE_CLASSES} ${toneClasses} ${visibilityClasses} ${className}`}
+          onPointerDown={onPointerDown}
+          onMouseDown={
+            keepFocusOnTextarea ? (e) => e.preventDefault() : undefined
+          }
+          {...rest}
+        >
+          {children}
+        </button>
+        <button
+          type="button"
+          onClick={handleArrowClick}
+          className={`w-6 h-6 flex items-center justify-center cursor-pointer transition-colors ${toneClasses} ${visibilityClasses} -ml-1`}
+          onPointerDown={onPointerDown}
+          onMouseDown={
+            keepFocusOnTextarea ? (e) => e.preventDefault() : undefined
+          }
+          title="More options"
+        >
+          ▼
+        </button>
+      </div>
+    );
+  }
 
   return (
     <button
