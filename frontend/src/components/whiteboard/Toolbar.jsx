@@ -7,13 +7,23 @@ import ToolbarButton from "./ToolbarButton";
 const SHAPE_OPTIONS = [
   { type: "rectangle", label: "Rectangle", icon: "▭" },
   { type: "circle", label: "Circle", icon: "●" },
+  { type: "triangle", label: "Triangle", icon: "▲" },
+  { type: "diamond", label: "Diamond", icon: "◆" },
+  { type: "arrow", label: "Arrow", icon: "➤" },
+  { type: "pentagon", label: "Pentagon", icon: "⬟" },
   { type: "star", label: "Star", icon: "★" },
+  { type: "heart", label: "Heart", icon: "♥" },
 ];
 
 const DEFAULT_SIZES = {
   rectangle: { width: 160, height: 100 },
   circle: { width: 120, height: 120 },
+  triangle: { width: 130, height: 130 },
+  diamond: { width: 120, height: 120 },
+  arrow: { width: 140, height: 80 },
+  pentagon: { width: 130, height: 130 },
   star: { width: 130, height: 130 },
+  heart: { width: 120, height: 130 },
   text: { width: 180, height: 40 },
 };
 
@@ -139,7 +149,9 @@ const Toolbar = () => {
         )}
       </div>
 
-      <ToolbarButton icon="T" label="Add text box" onClick={handleTextClick} />
+      <ToolbarButton icon="T" label="Add text box" onClick={handleTextClick}>
+        T
+      </ToolbarButton>
     </div>
   );
 };
