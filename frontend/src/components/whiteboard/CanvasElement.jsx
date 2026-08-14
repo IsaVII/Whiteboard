@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import { socket } from "../../redux/services/socket";
 import { elementUpdated, elementRemoved } from "../../redux/slices/boardSlice";
@@ -25,7 +26,14 @@ const MIN_HEIGHT = 40;
  * untransformed canvas-content coordinates; dragging only needs to divide
  * pointer-movement deltas by the current zoom `scale` to convert them.
  */
-const CanvasElement = ({ element, boardId, scale }) => {
+const CanvasElement = ({
+  element,
+  boardId,
+  scale,
+  selected = false,
+  onSelect,
+  toolbarPortalNode,
+}) => {
   const dispatch = useDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -75,6 +83,14 @@ const CanvasElement = ({ element, boardId, scale }) => {
       disabled: isEditing,
       onMove: emitUpdate,
     });
+
+  const handleSelect = (e) => {
+    // Selection is a plain click, distinct from the double-click that
+    // starts editing. Stop it from bubbling to Canvas's click handler,
+    // which deselects when the click lands on empty canvas space.
+    e.stopPropagation();
+    onSelect?.();
+  };
 
   const handleStartEditing = () => {
     // Seed the editing buffer from the latest server/Redux state (not a
@@ -316,6 +332,10 @@ const CanvasElement = ({ element, boardId, scale }) => {
     <div
       className={`absolute flex cursor-grab select-none touch-none group ${
         dragging ? "cursor-grabbing z-20" : ""
+      } ${
+        selected
+          ? "ring-2 ring-indigo-400 ring-offset-2 ring-offset-transparent"
+          : ""
       }`}
       style={{
         left: element.x,
@@ -328,6 +348,7 @@ const CanvasElement = ({ element, boardId, scale }) => {
       onPointerMove={resizing ? handleResizePointerMove : handlePointerMove}
       onPointerUp={resizing ? handleResizeEnd : endDrag}
       onPointerCancel={resizing ? handleResizeEnd : endDrag}
+      onClick={handleSelect}
       onDoubleClick={handleStartEditing}
       // Stop touch events from also reaching Canvas's pan/pinch
       // handlers, which listen on the same element tree.
@@ -420,120 +441,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       )}
 
-      {/* Font size buttons */}
-      <ToolbarGroup position="-top-4 left-25" hidden={isEditing}>
-        <ToolbarButton
-          title="Decrease font size"
-          className="text-xs rounded"
-          onClick={() => handleFontSizeChange(Math.max(8, fontSize - 2))}
-        >
-          −
-        </ToolbarButton>
-        <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none pointer-events-none">
-          {fontSize}px
-        </div>
-        <ToolbarButton
-          title="Increase font size"
-          className="text-xs rounded"
-          onClick={() => handleFontSizeChange(Math.min(20, fontSize + 2))}
-        >
-          +
-        </ToolbarButton>
-      </ToolbarGroup>
-
-      {/* Horizontal text align buttons */}
-      <ToolbarGroup position="-top-4 left-0" hidden={isEditing}>
-        <ToolbarButton
-          title="Align left"
-          className="text-xs rounded"
-          active={textAlign === "left"}
-          onClick={() => handleTextAlignChange("left")}
-        >
-          ⬅
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align center"
-          className="text-xs rounded"
-          active={textAlign === "center"}
-          onClick={() => handleTextAlignChange("center")}
-        >
-          ⬌
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align right"
-          className="text-xs rounded"
-          active={textAlign === "right"}
-          onClick={() => handleTextAlignChange("right")}
-        >
-          ➡
-        </ToolbarButton>
-      </ToolbarGroup>
-
-      {/* Vertical text align buttons */}
-      <ToolbarGroup position="top-4 -left-4" direction="col" hidden={isEditing}>
-        <ToolbarButton
-          title="Align top"
-          className="text-xs rounded"
-          active={verticalAlign === "top"}
-          onClick={() => handleVerticalAlignChange("top")}
-        >
-          ⬆
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align middle"
-          className="text-xs rounded"
-          active={verticalAlign === "middle"}
-          onClick={() => handleVerticalAlignChange("middle")}
-        >
-          ⬌
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align bottom"
-          className="text-xs rounded"
-          active={verticalAlign === "bottom"}
-          onClick={() => handleVerticalAlignChange("bottom")}
-        >
-          ⬇
-        </ToolbarButton>
-      </ToolbarGroup>
-
-      {/* Text formatting buttons - normal, bold and italic. Mounted only
-          while editing (rather than faded like the groups above), and each
-          one keeps focus on the textarea so clicking it doesn't blur out
-          of edit mode. */}
-      {isEditing && (
-        <div className="absolute -top-4 left-64 flex gap-1 z-[50]">
-          <ToolbarButton
-            title="Normal"
-            className="text-xs rounded"
-            active={!selectedFormat.bold && !selectedFormat.italic}
-            onClick={handleNormalToggle}
-            keepFocusOnTextarea
-          >
-            N
-          </ToolbarButton>
-          <ToolbarButton
-            title="Bold"
-            className="text-xs rounded font-bold"
-            active={selectedFormat.bold}
-            onClick={handleBoldToggle}
-            keepFocusOnTextarea
-          >
-            B
-          </ToolbarButton>
-          <ToolbarButton
-            title="Italic"
-            className="text-xs rounded italic"
-            active={selectedFormat.italic}
-            onClick={handleItalicToggle}
-            keepFocusOnTextarea
-          >
-            I
-          </ToolbarButton>
-        </div>
-      )}
-
-      {/* Resize buttons - bottom right corner */}
+      {/* Resize buttons - bottom right corner. These stay anchored to the
+          element itself rather than moving into the floating toolbar. */}
       <ToolbarGroup
         position="-bottom-2 -right-2"
         direction="row"
@@ -565,26 +474,165 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       </ToolbarGroup>
 
-      <ToolbarButton
-        tone="danger"
-        hidden={isEditing}
-        className="text-sm leading-none rounded-full absolute -top-1 -right-2 z-[2]"
-        onClick={handleDeleteClick}
-        title="Delete"
-        aria-label="Delete"
-      >
-        ×
-      </ToolbarButton>
+      {/* Formatting controls (font size, alignment, colors, delete, and
+          bold/italic/normal while editing) render into the floating
+          second toolbar above the whiteboard instead of around the
+          element - see Canvas.jsx. Only shown while this element is
+          selected. */}
+      {selected &&
+        toolbarPortalNode &&
+        createPortal(
+          <>
+            {!isEditing && (
+              <>
+                <div className="flex items-center gap-1">
+                  <ToolbarButton
+                    title="Decrease font size"
+                    className="text-xs rounded"
+                    onClick={() =>
+                      handleFontSizeChange(Math.max(8, fontSize - 2))
+                    }
+                  >
+                    −
+                  </ToolbarButton>
+                  <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none">
+                    {fontSize}px
+                  </div>
+                  <ToolbarButton
+                    title="Increase font size"
+                    className="text-xs rounded"
+                    onClick={() =>
+                      handleFontSizeChange(Math.min(20, fontSize + 2))
+                    }
+                  >
+                    +
+                  </ToolbarButton>
+                </div>
 
-      {/* Color picker buttons - vertically stacked below delete button */}
-      <ToolbarGroup
-        position="top-7 -right-2"
-        direction="col"
-        hidden={isEditing}
-      >
-        <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
-        <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
-      </ToolbarGroup>
+                <div className="w-px h-5 bg-gray-200" />
+
+                <div className="flex items-center gap-1">
+                  <ToolbarButton
+                    title="Align left"
+                    className="text-xs rounded"
+                    active={textAlign === "left"}
+                    onClick={() => handleTextAlignChange("left")}
+                  >
+                    ⬅
+                  </ToolbarButton>
+                  <ToolbarButton
+                    title="Align center"
+                    className="text-xs rounded"
+                    active={textAlign === "center"}
+                    onClick={() => handleTextAlignChange("center")}
+                  >
+                    ⬌
+                  </ToolbarButton>
+                  <ToolbarButton
+                    title="Align right"
+                    className="text-xs rounded"
+                    active={textAlign === "right"}
+                    onClick={() => handleTextAlignChange("right")}
+                  >
+                    ➡
+                  </ToolbarButton>
+                </div>
+
+                <div className="w-px h-5 bg-gray-200" />
+
+                <div className="flex items-center gap-1">
+                  <ToolbarButton
+                    title="Align top"
+                    className="text-xs rounded"
+                    active={verticalAlign === "top"}
+                    onClick={() => handleVerticalAlignChange("top")}
+                  >
+                    ⬆
+                  </ToolbarButton>
+                  <ToolbarButton
+                    title="Align middle"
+                    className="text-xs rounded"
+                    active={verticalAlign === "middle"}
+                    onClick={() => handleVerticalAlignChange("middle")}
+                  >
+                    ⬌
+                  </ToolbarButton>
+                  <ToolbarButton
+                    title="Align bottom"
+                    className="text-xs rounded"
+                    active={verticalAlign === "bottom"}
+                    onClick={() => handleVerticalAlignChange("bottom")}
+                  >
+                    ⬇
+                  </ToolbarButton>
+                </div>
+
+                <div className="w-px h-5 bg-gray-200" />
+
+                <div className="flex items-center gap-2">
+                  <ColorButton
+                    isSoft={false}
+                    onColorSelect={handleStrokeColorChange}
+                    alwaysVisible
+                  />
+                  <ColorButton
+                    isSoft={true}
+                    onColorSelect={handleFillColorChange}
+                    alwaysVisible
+                  />
+                </div>
+
+                <div className="w-px h-5 bg-gray-200" />
+
+                <ToolbarButton
+                  tone="danger"
+                  className="text-sm leading-none rounded-full"
+                  onClick={handleDeleteClick}
+                  title="Delete"
+                  aria-label="Delete"
+                >
+                  ×
+                </ToolbarButton>
+              </>
+            )}
+
+            {/* Bold/italic/normal only make sense while actively editing
+                this element's text, and each button keeps focus on the
+                textarea so clicking it doesn't blur out of edit mode. */}
+            {isEditing && (
+              <div className="flex items-center gap-1">
+                <ToolbarButton
+                  title="Normal"
+                  className="text-xs rounded"
+                  active={!selectedFormat.bold && !selectedFormat.italic}
+                  onClick={handleNormalToggle}
+                  keepFocusOnTextarea
+                >
+                  N
+                </ToolbarButton>
+                <ToolbarButton
+                  title="Bold"
+                  className="text-xs rounded font-bold"
+                  active={selectedFormat.bold}
+                  onClick={handleBoldToggle}
+                  keepFocusOnTextarea
+                >
+                  B
+                </ToolbarButton>
+                <ToolbarButton
+                  title="Italic"
+                  className="text-xs rounded italic"
+                  active={selectedFormat.italic}
+                  onClick={handleItalicToggle}
+                  keepFocusOnTextarea
+                >
+                  I
+                </ToolbarButton>
+              </div>
+            )}
+          </>,
+          toolbarPortalNode,
+        )}
 
       {/* Delete confirmation modal */}
       <Modal

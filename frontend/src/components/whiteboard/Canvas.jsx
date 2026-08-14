@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "../../redux/services/socket";
 import RemoteCursor from "./RemoteCursor";
 import CanvasElement from "./CanvasElement";
@@ -26,6 +26,27 @@ const Canvas = () => {
   const [viewport, setViewport] = useState({ scale: 1, x: 0, y: 0 });
   const viewportRef = useRef(viewport);
   viewportRef.current = viewport;
+
+  // Which element (if any) is selected, and the DOM node the second
+  // ("element formatting") toolbar renders into. That toolbar lives
+  // outside .canvas-viewport so it doesn't pan/zoom with the board and
+  // stays put as a fixed overlay; each CanvasElement portals its
+  // formatting controls into it while it's the selected one. A callback
+  // ref (via useState) is used instead of a plain ref so children re-render
+  // once the node actually exists.
+  const [selectedElementId, setSelectedElementId] = useState(null);
+  const [toolbarNode, setToolbarNode] = useState(null);
+
+  // If the selected element gets deleted (by us or a remote peer), drop
+  // the now-dangling selection so the toolbar doesn't linger empty.
+  useEffect(() => {
+    if (
+      selectedElementId &&
+      !elements.some((el) => el.id === selectedElementId)
+    ) {
+      setSelectedElementId(null);
+    }
+  }, [elements, selectedElementId]);
 
   // Touch gesture tracking. Kept in a ref (not state) since it updates on
   // every touchmove and doesn't need to trigger re-renders itself.
@@ -61,6 +82,7 @@ const Canvas = () => {
     }
 
     const { x, y } = toCanvasCoords(e.clientX, e.clientY);
+    setSelectedElementId(null);
   };
 
   const handleMouseDown = (e, elementId) => {};
@@ -224,6 +246,9 @@ const Canvas = () => {
             element={element}
             boardId={boardId}
             scale={viewport.scale}
+            selected={element.id === selectedElementId}
+            onSelect={() => setSelectedElementId(element.id)}
+            toolbarPortalNode={toolbarNode}
           />
         ))}
 
@@ -238,6 +263,19 @@ const Canvas = () => {
           />
         ))}
       </div>
+
+      {/* Second toolbar: element formatting controls. Always mounted (so
+          the portal target ref is stable) but only visually shown once
+          something is selected; CanvasElement portals its controls in
+          here instead of floating them around the element itself. */}
+      <div
+        ref={setToolbarNode}
+        className={`canvas-element-toolbar ${
+          selectedElementId ? "canvas-element-toolbar--visible" : ""
+        }`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      />
 
       {/* Zoom controls */}
       <div className="canvas-zoom-controls">

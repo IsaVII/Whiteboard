@@ -32,8 +32,12 @@ const SOFT_COLORS = [
  * ColorButton displays a 2x5 grid of color options
  * @param {boolean} isSoft - if true, use softer colors; if false, use bright colors
  * @param {Function} onColorSelect - callback when a color is selected
+ * @param {boolean} alwaysVisible - if true, skip the "fade in on hover of a
+ *   `.group` ancestor" behavior and just show the button. Needed when the
+ *   button is rendered somewhere (e.g. the floating element toolbar) that
+ *   isn't a descendant of the canvas element's `.group` wrapper anymore.
  */
-const ColorButton = ({ isSoft = false, onColorSelect }) => {
+const ColorButton = ({ isSoft = false, onColorSelect, alwaysVisible = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const colors = isSoft ? SOFT_COLORS : BRIGHT_COLORS;
 
@@ -46,7 +50,11 @@ const ColorButton = ({ isSoft = false, onColorSelect }) => {
     <div className="relative w-5 h-5">
       <button
         type="button"
-        className="absolute top-0 left-0 w-5 h-5 rounded border border-gray-300 bg-white text-gray-500 text-xs leading-none flex items-center justify-center cursor-pointer shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity hover:bg-gray-100 hover:border-gray-400"
+        className={`absolute top-0 left-0 w-5 h-5 rounded border border-gray-300 bg-white text-gray-500 text-xs leading-none flex items-center justify-center cursor-pointer shadow-sm transition-opacity hover:bg-gray-100 hover:border-gray-400 ${
+          alwaysVisible
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+        }`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
