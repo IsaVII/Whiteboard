@@ -1,6 +1,9 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "../../redux/services/socket";
+import { elementRemoved } from "../../redux/slices/boardSlice";
+import Modal from "../Modal";
+import CanvasButton from "./CanvasButton";
 import RemoteCursor from "./RemoteCursor";
 import CanvasElement from "./CanvasElement";
 import "./Canvas.css";
@@ -36,6 +39,7 @@ const Canvas = () => {
   // once the node actually exists.
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [toolbarNode, setToolbarNode] = useState(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
 
   // If the selected element gets deleted (by us or a remote peer), drop
   // the now-dangling selection so the toolbar doesn't linger empty.
@@ -267,6 +271,25 @@ const Canvas = () => {
 
   const resetView = () => setViewport({ scale: 1, x: 0, y: 0 });
 
+  const handleDeleteAllClick = () => {
+    setShowDeleteAllModal(true);
+  };
+
+  const confirmDeleteAll = () => {
+    setShowDeleteAllModal(false);
+    // Delete all elements locally
+    elements.forEach((element) => {
+      dispatch(elementRemoved({ elementId: element.id }));
+    });
+    // Broadcast deletion to all other clients
+    if (boardId) {
+      elements.forEach((element) => {
+        socket.emit("element-removed", { boardId, elementId: element.id });
+      });
+    }
+    setSelectedElementId(null);
+  };
+
   return (
     <div
       ref={canvasRef}
@@ -327,17 +350,51 @@ const Canvas = () => {
       />
 
       {/* Zoom controls */}
-      <div className="canvas-zoom-controls">
-        <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">
+      <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-100">
+        <CanvasButton
+          onClick={() => zoomBy(1.25)}
+          title="Zoom in"
+          ariaLabel="Zoom in"
+        >
           +
-        </button>
-        <button type="button" onClick={() => zoomBy(0.8)} aria-label="Zoom out">
+        </CanvasButton>
+        <CanvasButton
+          onClick={() => zoomBy(0.8)}
+          title="Zoom out"
+          ariaLabel="Zoom out"
+        >
           −
-        </button>
-        <button type="button" onClick={resetView} aria-label="Reset view">
+        </CanvasButton>
+        <CanvasButton
+          onClick={resetView}
+          title="Reset view"
+          ariaLabel="Reset view"
+        >
           ⟲
-        </button>
+        </CanvasButton>
       </div>
+
+      {/* Delete all elements button */}
+      <CanvasButton
+        onClick={handleDeleteAllClick}
+        title="Delete all elements"
+        ariaLabel="Delete all elements"
+        variant="danger"
+        className="absolute top-3 right-3 z-100"
+      >
+        🗑️
+      </CanvasButton>
+
+      {/* Delete all confirmation modal */}
+      <Modal
+        isOpen={showDeleteAllModal}
+        title="Delete All Elements"
+        message="Are you REALLY sure you want to delete ALL ELEMENTS?"
+        onConfirm={confirmDeleteAll}
+        onCancel={() => setShowDeleteAllModal(false)}
+        confirmText="Yes, Delete All"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

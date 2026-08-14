@@ -159,7 +159,7 @@ export default function DebugPanel() {
 
       {/* Debug Panel */}
       {isOpen && (
-        <div className="fixed bottom-16 right-4 z-50 w-80 max-h-96 bg-white border-2 border-gray-300 rounded-lg shadow-2xl flex flex-col">
+        <div className="fixed bottom-16 right-4 z-50 w-80 max-h-96 bg-white border-2 border-gray-300 rounded-lg shadow-2xl flex flex-col z-[9999] pointer-events-auto">
           {/* Header */}
           <div className="bg-gray-900 text-white p-2 rounded-t-md flex justify-between items-center gap-2">
             <span className="font-bold text-xs">DEBUG CONSOLE</span>
