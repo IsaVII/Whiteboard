@@ -9,6 +9,7 @@ import ToolbarButton from "./ToolbarButton";
 import ToolbarGroup from "./ToolbarGroup";
 import ShapeBackground from "./ShapeBackground";
 import FormattedText from "./FormattedText";
+import ElementToolbar from "./ElementToolbar";
 import { useDraggableElement } from "./useDraggableElement";
 import {
   getSelectionFormat,
@@ -157,6 +158,53 @@ const CanvasElement = ({
     textarea.setSelectionRange(start, end);
     pendingSelectionRef.current = null;
   }, [editValue, isEditing]);
+
+  // Auto-resize elements when they're loaded with content (e.g., on page reload).
+  // Only auto-resize if the element hasn't been manually resized by the user.
+  useEffect(() => {
+    if (isEditing || element.manuallyResized || !displayContent) return;
+
+    // Use requestAnimationFrame to ensure the DOM is ready
+    const resizeTimer = requestAnimationFrame(() => {
+      const tempDiv = document.createElement("div");
+      tempDiv.style.visibility = "hidden";
+      tempDiv.style.position = "absolute";
+      tempDiv.style.whiteSpace = "pre-wrap";
+      tempDiv.style.wordWrap = "break-word";
+      tempDiv.style.padding = "8px";
+      tempDiv.style.fontSize = `${fontSize}px`;
+      tempDiv.style.fontFamily = "inherit";
+      tempDiv.style.lineHeight = "1.5";
+      tempDiv.textContent = displayContent;
+      document.body.appendChild(tempDiv);
+
+      const contentWidth = tempDiv.scrollWidth;
+      const contentHeight = tempDiv.scrollHeight;
+      document.body.removeChild(tempDiv);
+
+      const newWidth = Math.max(contentWidth, MIN_WIDTH);
+      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
+
+      // Only update if dimensions differ significantly (allow small variations)
+      if (
+        Math.abs(newWidth - element.width) > 2 ||
+        Math.abs(newHeight - element.height) > 2
+      ) {
+        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
+      }
+    });
+
+    return () => cancelAnimationFrame(resizeTimer);
+  }, [
+    displayContent,
+    isEditing,
+    element.manuallyResized,
+    element.width,
+    element.height,
+    element.id,
+    fontSize,
+    emitUpdate,
+  ]);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -495,126 +543,19 @@ const CanvasElement = ({
         createPortal(
           <>
             {!isEditing && (
-              <>
-                <div className="flex items-center gap-1">
-                  <ToolbarButton
-                    title="Decrease font size"
-                    className="text-xs rounded"
-                    onClick={() =>
-                      handleFontSizeChange(Math.max(8, fontSize - 2))
-                    }
-                  >
-                    −
-                  </ToolbarButton>
-                  <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none">
-                    {fontSize}px
-                  </div>
-                  <ToolbarButton
-                    title="Increase font size"
-                    className="text-xs rounded"
-                    onClick={() =>
-                      handleFontSizeChange(Math.min(20, fontSize + 2))
-                    }
-                  >
-                    +
-                  </ToolbarButton>
-                </div>
-
-                <div className="w-px h-5 bg-gray-200" />
-
-                <div className="flex items-center gap-1">
-                  <ToolbarButton
-                    title="Align left"
-                    className="text-xs rounded"
-                    active={textAlign === "left"}
-                    onClick={() => handleTextAlignChange("left")}
-                  >
-                    ⬅
-                  </ToolbarButton>
-                  <ToolbarButton
-                    title="Align center"
-                    className="text-xs rounded"
-                    active={textAlign === "center"}
-                    onClick={() => handleTextAlignChange("center")}
-                  >
-                    ⬌
-                  </ToolbarButton>
-                  <ToolbarButton
-                    title="Align right"
-                    className="text-xs rounded"
-                    active={textAlign === "right"}
-                    onClick={() => handleTextAlignChange("right")}
-                  >
-                    ➡
-                  </ToolbarButton>
-                </div>
-
-                <div className="w-px h-5 bg-gray-200" />
-
-                <div className="flex items-center gap-1">
-                  <ToolbarButton
-                    title="Align top"
-                    className="text-xs rounded"
-                    active={verticalAlign === "top"}
-                    onClick={() => handleVerticalAlignChange("top")}
-                  >
-                    ⬆
-                  </ToolbarButton>
-                  <ToolbarButton
-                    title="Align middle"
-                    className="text-xs rounded"
-                    active={verticalAlign === "middle"}
-                    onClick={() => handleVerticalAlignChange("middle")}
-                  >
-                    ⬌
-                  </ToolbarButton>
-                  <ToolbarButton
-                    title="Align bottom"
-                    className="text-xs rounded"
-                    active={verticalAlign === "bottom"}
-                    onClick={() => handleVerticalAlignChange("bottom")}
-                  >
-                    ⬇
-                  </ToolbarButton>
-                </div>
-
-                <div className="w-px h-5 bg-gray-200" />
-
-                <div className="flex items-center gap-2">
-                  <ColorButton
-                    isSoft={false}
-                    onColorSelect={handleFontColorChange}
-                    alwaysVisible
-                    label="A"
-                  />
-                  {!isTextOnly && (
-                    <>
-                      <ColorButton
-                        isSoft={false}
-                        onColorSelect={handleStrokeColorChange}
-                        alwaysVisible
-                      />
-                      <ColorButton
-                        isSoft={true}
-                        onColorSelect={handleFillColorChange}
-                        alwaysVisible
-                      />
-                    </>
-                  )}
-                </div>
-
-                <div className="w-px h-5 bg-gray-200" />
-
-                <ToolbarButton
-                  tone="danger"
-                  className="text-sm leading-none rounded-full"
-                  onClick={handleDeleteClick}
-                  title="Delete"
-                  aria-label="Delete"
-                >
-                  ×
-                </ToolbarButton>
-              </>
+              <ElementToolbar
+                fontSize={fontSize}
+                onFontSizeChange={handleFontSizeChange}
+                textAlign={textAlign}
+                onTextAlignChange={handleTextAlignChange}
+                verticalAlign={verticalAlign}
+                onVerticalAlignChange={handleVerticalAlignChange}
+                onFontColorChange={handleFontColorChange}
+                isTextOnly={isTextOnly}
+                onStrokeColorChange={handleStrokeColorChange}
+                onFillColorChange={handleFillColorChange}
+                onDeleteClick={handleDeleteClick}
+              />
             )}
 
             {/* Bold/italic/normal only make sense while actively editing
