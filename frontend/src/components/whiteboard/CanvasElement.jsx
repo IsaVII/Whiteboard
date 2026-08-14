@@ -29,6 +29,7 @@ const CanvasElement = ({ element, boardId, scale }) => {
   const dispatch = useDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [resizing, setResizing] = useState(false);
   // Local buffer for the textarea while editing only. Everything else
   // (fontSize, textAlign, verticalAlign, the non-editing display text) is
   // read directly from `element` below so a remote update always shows up
@@ -38,6 +39,7 @@ const CanvasElement = ({ element, boardId, scale }) => {
   const textareaRef = useRef(null);
   const measureDivRef = useRef(null);
   const pendingSelectionRef = useRef(null); // {start, end} to restore after a formatting toggle
+  const resizeRef = useRef(null); // {startClientX, startClientY, startWidth, startHeight}
 
   const isTextOnly = element.type === "text";
   const fontSize = element.fontSize || 14;
@@ -97,8 +99,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
 
   const handleTextBlur = () => {
     const textarea = textareaRef.current;
-    // Measure and update size before closing edit mode
-    if (!isTextOnly && textarea) {
+    // Auto-resize only if element was never manually resized
+    if (!isTextOnly && textarea && !element.manuallyResized) {
       const scrollWidth = Math.max(textarea.scrollWidth, MIN_WIDTH);
       const scrollHeight = Math.max(textarea.scrollHeight, MIN_HEIGHT);
 
@@ -178,6 +180,79 @@ const CanvasElement = ({ element, boardId, scale }) => {
     emitUpdate({ verticalAlign: align }, { force: true });
   };
 
+  const handleResizePointerDown = (e) => {
+    if (isEditing) return;
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startWidth: element.width,
+      startHeight: element.height,
+    };
+    setResizing(true);
+  };
+
+  const handleResizePointerMove = (e) => {
+    if (!resizeRef.current) return;
+    e.stopPropagation();
+    const { startClientX, startClientY, startWidth, startHeight } =
+      resizeRef.current;
+    const dx = (e.clientX - startClientX) / scale;
+    const dy = (e.clientY - startClientY) / scale;
+    const newWidth = Math.max(MIN_WIDTH, startWidth + dx);
+    const newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
+    emitUpdate({ width: newWidth, height: newHeight });
+  };
+
+  const handleResizeEnd = (e) => {
+    if (!resizeRef.current) return;
+    e.stopPropagation();
+    const { startClientX, startClientY, startWidth, startHeight } =
+      resizeRef.current;
+    const dx = (e.clientX - startClientX) / scale;
+    const dy = (e.clientY - startClientY) / scale;
+    const newWidth = Math.max(MIN_WIDTH, startWidth + dx);
+    const newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
+    // Mark element as manually resized so auto-resize won't override it
+    emitUpdate(
+      { width: newWidth, height: newHeight, manuallyResized: true },
+      { force: true },
+    );
+    resizeRef.current = null;
+    setResizing(false);
+  };
+
+  const handleAutoResize = () => {
+    if (!measureDivRef.current) {
+      // Create a temporary measurement div if one doesn't exist (for text-only elements during non-editing)
+      const tempDiv = document.createElement("div");
+      tempDiv.style.visibility = "hidden";
+      tempDiv.style.position = "absolute";
+      tempDiv.style.whiteSpace = "pre-wrap";
+      tempDiv.style.wordWrap = "break-word";
+      tempDiv.style.padding = "8px"; // Match p-2 from the display div
+      tempDiv.style.fontSize = `${fontSize}px`;
+      tempDiv.style.fontFamily = "inherit";
+      tempDiv.style.lineHeight = "1.5";
+      tempDiv.textContent = element.content || "Double-click to add text";
+      document.body.appendChild(tempDiv);
+      const contentWidth = tempDiv.scrollWidth;
+      const contentHeight = tempDiv.scrollHeight;
+      document.body.removeChild(tempDiv);
+      const newWidth = Math.max(contentWidth, MIN_WIDTH);
+      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
+      emitUpdate({ width: newWidth, height: newHeight }, { force: true });
+    } else {
+      // During editing, use the visible measurement div
+      const contentWidth = measureDivRef.current.scrollWidth;
+      const contentHeight = measureDivRef.current.scrollHeight;
+      const newWidth = Math.max(contentWidth, MIN_WIDTH);
+      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
+      emitUpdate({ width: newWidth, height: newHeight }, { force: true });
+    }
+  };
+
   // Applies the result of a textFormatting helper (or does nothing if
   // there was no selection to act on) and queues the selection restore.
   const applySelectionUpdate = (result) => {
@@ -250,9 +325,9 @@ const CanvasElement = ({ element, boardId, scale }) => {
       }}
       title={element.createdBy ? `Added by ${element.createdBy}` : undefined}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerMove={resizing ? handleResizePointerMove : handlePointerMove}
+      onPointerUp={resizing ? handleResizeEnd : endDrag}
+      onPointerCancel={resizing ? handleResizeEnd : endDrag}
       onDoubleClick={handleStartEditing}
       // Stop touch events from also reaching Canvas's pan/pinch
       // handlers, which listen on the same element tree.
@@ -272,6 +347,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
           <textarea
             ref={textareaRef}
             className={`relative z-[1] w-full h-full p-2 text-xs text-gray-800 break-words resize-none border-0 outline-none bg-transparent font-inherit text-inherit whitespace-pre-wrap ${
+              element.manuallyResized ? "overflow-hidden" : ""
+            } ${
               isTextOnly
                 ? "border border-dashed border-gray-400 rounded bg-white/60"
                 : ""
@@ -303,6 +380,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
       ) : (
         <div
           className={`relative z-[1] w-full h-full p-2 text-xs text-gray-800 break-words whitespace-pre-wrap ${
+            element.manuallyResized ? "overflow-hidden" : ""
+          } ${
             isTextOnly
               ? "border border-dashed border-transparent rounded group-hover:border-gray-400 group-hover:bg-white/60"
               : "flex"
@@ -454,6 +533,38 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       )}
 
+      {/* Resize buttons - bottom right corner */}
+      <ToolbarGroup
+        position="-bottom-2 -right-2"
+        direction="row"
+        hidden={isEditing}
+      >
+        <ToolbarButton
+          title="Auto-resize to fit content"
+          className="text-xs rounded"
+          onClick={handleAutoResize}
+        >
+          ↔️
+        </ToolbarButton>
+        <div
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={resizing ? handleResizePointerMove : undefined}
+          onPointerUp={resizing ? handleResizeEnd : undefined}
+          onPointerCancel={resizing ? handleResizeEnd : undefined}
+          className={`w-6 h-6 rounded cursor-se-resize opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+            resizing ? "opacity-100" : ""
+          }`}
+          title="Drag to resize"
+          style={{
+            background: resizing ? "rgb(99, 102, 241)" : "white",
+            border: "1px solid #d1d5db",
+            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          ⬉
+        </div>
+      </ToolbarGroup>
+
       <ToolbarButton
         tone="danger"
         hidden={isEditing}
@@ -466,7 +577,11 @@ const CanvasElement = ({ element, boardId, scale }) => {
       </ToolbarButton>
 
       {/* Color picker buttons - vertically stacked below delete button */}
-      <ToolbarGroup position="top-7 -right-2" direction="col" hidden={isEditing}>
+      <ToolbarGroup
+        position="top-7 -right-2"
+        direction="col"
+        hidden={isEditing}
+      >
         <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
         <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
       </ToolbarGroup>
