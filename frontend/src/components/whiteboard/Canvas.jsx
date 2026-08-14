@@ -51,7 +51,7 @@ const Canvas = () => {
   // Touch gesture tracking. Kept in a ref (not state) since it updates on
   // every touchmove and doesn't need to trigger re-renders itself.
   const gestureRef = useRef({
-    mode: null, // 'pan' | 'pinch' | null
+    mode: null, // 'pan' | 'pinch' | 'mouse-pan' | null
     lastX: 0,
     lastY: 0,
     startDistance: 0,
@@ -76,6 +76,11 @@ const Canvas = () => {
   }, []);
 
   const handleCanvasClick = (e) => {
+    // Don't deselect if we were just panning
+    if (gestureRef.current.mode === "mouse-pan") {
+      return;
+    }
+
     if (!boardId) {
       console.error("Board ID is not set. Cannot emit cursor position.");
       return;
@@ -85,10 +90,43 @@ const Canvas = () => {
     setSelectedElementId(null);
   };
 
-  const handleMouseDown = (e, elementId) => {};
+  const handleMouseDown = (e) => {
+    // Only start panning if the click is directly on the canvas background
+    // (not on an element). Check if target is the canvas or canvas-viewport.
+    if (
+      e.target === canvasRef.current ||
+      e.target.classList.contains("canvas-viewport")
+    ) {
+      const gesture = gestureRef.current;
+      gesture.mode = "mouse-pan";
+      gesture.lastX = e.clientX;
+      gesture.lastY = e.clientY;
+      // Update cursor to show grabbing
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = "grabbing";
+      }
+    }
+  };
 
   const handleMouseMove = (e) => {
     if (!canvasRef.current) return;
+
+    const gesture = gestureRef.current;
+
+    // Handle mouse-based panning
+    if (gesture.mode === "mouse-pan") {
+      const dx = e.clientX - gesture.lastX;
+      const dy = e.clientY - gesture.lastY;
+      gesture.lastX = e.clientX;
+      gesture.lastY = e.clientY;
+
+      setViewport((prev) => ({
+        ...prev,
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }));
+      return;
+    }
 
     const { x, y } = toCanvasCoords(e.clientX, e.clientY);
 
@@ -103,7 +141,16 @@ const Canvas = () => {
     }
   };
 
-  const handleMouseUp = (e) => {};
+  const handleMouseUp = (e) => {
+    const gesture = gestureRef.current;
+    if (gesture.mode === "mouse-pan") {
+      gesture.mode = null;
+      // Reset cursor
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = "grab";
+      }
+    }
+  };
 
   // --- Touch gestures: one finger pans, two fingers pinch-to-zoom ---
 
@@ -224,6 +271,7 @@ const Canvas = () => {
     <div
       ref={canvasRef}
       className="canvas"
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
