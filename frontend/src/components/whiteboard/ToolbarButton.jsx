@@ -51,11 +51,21 @@ const ToolbarButton = ({
       }
     : (e) => e.stopPropagation();
 
+  const handleClick = (e) => {
+    e.stopPropagation();
+    onClick?.(e);
+  };
+
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <button
       type="button"
       title={title}
-      onClick={onClick}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       className={`${BASE_CLASSES} ${toneClasses} ${visibilityClasses} ${className}`}
       onPointerDown={onPointerDown}
       onMouseDown={keepFocusOnTextarea ? (e) => e.preventDefault() : undefined}

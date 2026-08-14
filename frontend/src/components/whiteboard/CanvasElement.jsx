@@ -460,6 +460,7 @@ const CanvasElement = ({
           onPointerMove={resizing ? handleResizePointerMove : undefined}
           onPointerUp={resizing ? handleResizeEnd : undefined}
           onPointerCancel={resizing ? handleResizeEnd : undefined}
+          onDoubleClick={(e) => e.stopPropagation()}
           className={`w-6 h-6 rounded cursor-se-resize opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
             resizing ? "opacity-100" : ""
           }`}
