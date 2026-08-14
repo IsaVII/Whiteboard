@@ -20,6 +20,13 @@ const CanvasElement = ({ element, boardId, scale }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [fontSize, setFontSize] = useState(element.fontSize || 14);
+  const [textAlign, setTextAlign] = useState(element.textAlign || "left");
+  const [verticalAlign, setVerticalAlign] = useState(
+    element.verticalAlign || "middle",
+  );
+  const [isBold, setIsBold] = useState(element.isBold || false);
+  const [isItalic, setIsItalic] = useState(element.isItalic || false);
   const dragRef = useRef(null); // {startClientX, startClientY, startX, startY}
   const lastEmitRef = useRef(0);
   const textareaRef = useRef(null);
@@ -125,6 +132,15 @@ const CanvasElement = ({ element, boardId, scale }) => {
       element.content || "Double-click to add text";
   }, [isEditing, element.content]);
 
+  // Sync text formatting properties when element changes
+  useEffect(() => {
+    setFontSize(element.fontSize || 14);
+    setTextAlign(element.textAlign || "left");
+    setVerticalAlign(element.verticalAlign || "middle");
+    setIsBold(element.isBold || false);
+    setIsItalic(element.isItalic || false);
+  }, [element.id]);
+
   const handleDelete = (e) => {
     e.stopPropagation();
     dispatch(elementRemoved({ elementId: element.id }));
@@ -149,6 +165,44 @@ const CanvasElement = ({ element, boardId, scale }) => {
 
   const handleFillColorChange = (color) => {
     emitUpdate({ fillColor: color }, { force: true });
+  };
+
+  const handleFontSizeChange = (newSize) => {
+    setFontSize(newSize);
+    emitUpdate({ fontSize: newSize }, { force: true });
+  };
+
+  const handleTextAlignChange = (align) => {
+    setTextAlign(align);
+    emitUpdate({ textAlign: align }, { force: true });
+  };
+
+  const handleVerticalAlignChange = (align) => {
+    setVerticalAlign(align);
+    emitUpdate({ verticalAlign: align }, { force: true });
+  };
+
+  const handleBoldToggle = () => {
+    const newBoldState = !isBold;
+    setIsBold(newBoldState);
+    emitUpdate({ isBold: newBoldState }, { force: true });
+  };
+
+  const handleItalicToggle = () => {
+    const newItalicState = !isItalic;
+    setIsItalic(newItalicState);
+    emitUpdate({ isItalic: newItalicState }, { force: true });
+  };
+
+  const handleNormalToggle = () => {
+    const newBoldState = false;
+    const newItalicState = false;
+    setIsBold(newBoldState);
+    setIsItalic(newItalicState);
+    emitUpdate(
+      { isBold: newBoldState, isItalic: newItalicState },
+      { force: true },
+    );
   };
 
   const isTextOnly = element.type === "text";
@@ -226,6 +280,12 @@ const CanvasElement = ({ element, boardId, scale }) => {
             onChange={handleTextChange}
             onBlur={handleTextBlur}
             onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              fontSize: `${fontSize}px`,
+              textAlign: textAlign,
+              fontWeight: isBold ? "bold" : "normal",
+              fontStyle: isItalic ? "italic" : "normal",
+            }}
           />
           {/* Hidden div to measure text content for auto-sizing shapes */}
           {!isTextOnly && (
@@ -246,11 +306,32 @@ const CanvasElement = ({ element, boardId, scale }) => {
           className={`relative z-[1] w-full h-full p-2 text-xs text-gray-800 break-words whitespace-pre-wrap ${
             isTextOnly
               ? "border border-dashed border-transparent rounded group-hover:border-gray-400 group-hover:bg-white/60"
-              : "flex items-center justify-center text-center"
+              : "flex"
           }`}
+          style={{
+            fontSize: `${fontSize}px`,
+            fontWeight: isBold ? "bold" : "normal",
+            fontStyle: isItalic ? "italic" : "normal",
+            ...(isTextOnly
+              ? {}
+              : {
+                  justifyContent:
+                    textAlign === "left"
+                      ? "flex-start"
+                      : textAlign === "right"
+                        ? "flex-end"
+                        : "center",
+                  alignItems:
+                    verticalAlign === "top"
+                      ? "flex-start"
+                      : verticalAlign === "bottom"
+                        ? "flex-end"
+                        : "center",
+                }),
+          }}
         >
           {element.content ? (
-            <span>{element.content}</span>
+            <span style={{ textAlign: textAlign }}>{element.content}</span>
           ) : (
             <span
               className={`text-gray-400 italic text-xs ${isTextOnly ? "" : "absolute"}`}
@@ -261,14 +342,176 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       )}
 
-      {/* Font size buttons */}
+      {/* Font size buttons - always visible */}
+      {!isEditing && (
+        <div
+          className={`absolute -top-4 left-25 flex gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
+        >
+          <button
+            type="button"
+            title="Decrease font size"
+            onClick={() => handleFontSizeChange(Math.max(8, fontSize - 2))}
+            className="w-6 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center cursor-pointer shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            −
+          </button>
+          <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none pointer-events-none">
+            {fontSize}px
+          </div>
+          <button
+            type="button"
+            title="Increase font size"
+            onClick={() => handleFontSizeChange(Math.min(20, fontSize + 2))}
+            className="w-6 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center cursor-pointer shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            +
+          </button>
+        </div>
+      )}
 
-      {/* Text align buttons */}
+      {/* Horizontal text align buttons - always visible */}
+      <div
+        className={`absolute -top-4 left-0 flex gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
+      >
+        <button
+          type="button"
+          title="Align left"
+          onClick={() => handleTextAlignChange("left")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            textAlign === "left"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ⬅
+        </button>
+        <button
+          type="button"
+          title="Align center"
+          onClick={() => handleTextAlignChange("center")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            textAlign === "center"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ⬌
+        </button>
+        <button
+          type="button"
+          title="Align right"
+          onClick={() => handleTextAlignChange("right")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            textAlign === "right"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ➡
+        </button>
+      </div>
 
-      {/* Delete button */}
+      {/* Vertical text align buttons - always visible */}
+      <div
+        className={`absolute top-4 -left-4 flex flex-col gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
+      >
+        <button
+          type="button"
+          title="Align top"
+          onClick={() => handleVerticalAlignChange("top")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            verticalAlign === "top"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ⬆
+        </button>
+        <button
+          type="button"
+          title="Align middle"
+          onClick={() => handleVerticalAlignChange("middle")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            verticalAlign === "middle"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ⬌
+        </button>
+        <button
+          type="button"
+          title="Align bottom"
+          onClick={() => handleVerticalAlignChange("bottom")}
+          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+            verticalAlign === "bottom"
+              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+          }`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          ⬇
+        </button>
+      </div>
+
+      {/* Text formatting buttons - normal, bold and italic */}
+      {isEditing && (
+        <div className="absolute -top-4 left-64 flex gap-1 z-[50] ">
+          <button
+            type="button"
+            title="Normal"
+            onClick={handleNormalToggle}
+            className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+              !isBold && !isItalic
+                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+            }`}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            N
+          </button>
+          <button
+            type="button"
+            title="Bold"
+            onClick={handleBoldToggle}
+            className={`w-6 h-6 rounded border text-xs font-bold flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+              isBold
+                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+            }`}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            title="Italic"
+            onClick={handleItalicToggle}
+            className={`w-6 h-6 rounded border text-xs italic flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
+              isItalic
+                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
+            }`}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            I
+          </button>
+        </div>
+      )}
       <button
         type="button"
-        className="absolute -top-1 -right-2 w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+        className={`absolute -top-1 -right-2 w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300 ${
+          isEditing
+            ? "opacity-0 pointer-events-none"
+            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+        }`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={handleDeleteClick}
         aria-label="Delete"
@@ -278,13 +521,15 @@ const CanvasElement = ({ element, boardId, scale }) => {
       </button>
 
       {/* Color picker buttons - vertically stacked below delete button */}
-      <div className="absolute top-7 -right-2 flex flex-col gap-1 z-[100]">
-        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
-        </div>
-        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
-        </div>
+      <div
+        className={`absolute top-7 -right-2 flex flex-col gap-1 z-[100] transition-opacity ${
+          isEditing
+            ? "opacity-0 pointer-events-none"
+            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+        }`}
+      >
+        <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
+        <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
       </div>
 
       {/* Delete confirmation modal */}
