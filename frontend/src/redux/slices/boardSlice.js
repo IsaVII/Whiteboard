@@ -35,8 +35,7 @@ const boardSlice = createSlice({
     },
     elementAdded(state, action) {
       const element = action.payload;
-      // Guard against double-adds (e.g. our own optimistic add racing
-      // with a server echo).
+      // Guard against double-adds
       if (!state.elements.some((el) => el.id === element.id)) {
         state.elements.push(element);
       }

@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import "./ToolbarButton.css";
 
 const LONG_PRESS_MS = 450;
 
@@ -53,10 +52,12 @@ const ToolbarButton = ({
   };
 
   return (
-    <div className="toolbar-button-wrapper">
+    <div className="relative">
       <button
         type="button"
-        className={`toolbar-button${active ? " toolbar-button--active" : ""}`}
+        className={`w-[42px] h-[42px] rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-lg font-semibold flex items-center justify-center cursor-pointer select-none touch-none shadow-sm active:bg-gray-200 transition-colors ${
+          active ? "bg-indigo-100 border-indigo-500 text-indigo-700" : ""
+        }`}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeaveOrCancel}
@@ -65,7 +66,7 @@ const ToolbarButton = ({
         aria-label={label}
         title={label}
       >
-        <span className="toolbar-button-icon">{icon}</span>
+        <span className="pointer-events-none leading-none">{icon}</span>
       </button>
       {children}
     </div>

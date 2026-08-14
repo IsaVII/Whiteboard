@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { socket } from "../../redux/services/socket";
 import { elementAdded, toolTypeSelected } from "../../redux/slices/boardSlice";
 import ToolbarButton from "./ToolbarButton";
-import "./Toolbar.css";
 
 const SHAPE_OPTIONS = [
   { type: "rectangle", label: "Rectangle", icon: "▭" },
@@ -106,12 +105,11 @@ const Toolbar = () => {
   };
 
   const activeShape =
-    SHAPE_OPTIONS.find((s) => s.type === selectedToolType) ||
-    SHAPE_OPTIONS[0];
+    SHAPE_OPTIONS.find((s) => s.type === selectedToolType) || SHAPE_OPTIONS[0];
 
   return (
-    <div className="toolbar">
-      <div ref={dropdownRef} className="toolbar-shape-button">
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-[10px] shadow-sm w-fit mx-auto my-3">
+      <div ref={dropdownRef} className="relative">
         <ToolbarButton
           icon={activeShape.icon}
           label={`Add ${activeShape.label} (hold for more shapes)`}
@@ -120,19 +118,21 @@ const Toolbar = () => {
           active={dropdownOpen}
         >
           {dropdownOpen && (
-            <div className="toolbar-dropdown">
+            <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 flex flex-col gap-0.5 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 z-50 min-w-[150px]">
               {SHAPE_OPTIONS.map((option) => (
                 <button
                   key={option.type}
                   type="button"
-                  className={`toolbar-dropdown-item${
+                  className={`flex items-center gap-2 px-2.5 py-1.5 border-0 bg-transparent rounded-md text-xs text-gray-700 cursor-pointer text-left hover:bg-gray-100 transition-colors ${
                     option.type === selectedToolType
-                      ? " toolbar-dropdown-item--active"
+                      ? "bg-indigo-100 text-indigo-700 font-semibold"
                       : ""
                   }`}
                   onClick={() => handleShapeOptionClick(option.type)}
                 >
-                  <span className="toolbar-dropdown-icon">{option.icon}</span>
+                  <span className="text-sm w-4.5 text-center">
+                    {option.icon}
+                  </span>
                   <span>{option.label}</span>
                 </button>
               ))}

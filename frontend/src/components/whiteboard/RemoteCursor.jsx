@@ -1,5 +1,3 @@
-import "./RemoteCursor.css";
-
 // Map Tailwind color classes to hex values
 const tailwindColorMap = {
   "bg-blue-400": "#60a5fa",
@@ -19,12 +17,12 @@ function RemoteCursor({ name, color, x, y }) {
 
   return (
     <div
-      className="remote-cursor"
+      className="absolute pointer-events-none z-50 transition-all duration-100"
       style={{ left: `${x}px`, top: `${y}px`, color: hexColor }}
     >
       <div className="flex items-center gap-1">
         <svg
-          className="remote-cursor-pointer"
+          className="block drop-shadow-sm"
           width="20"
           height="20"
           viewBox="0 0 20 20"
