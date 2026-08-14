@@ -184,6 +184,10 @@ const CanvasElement = ({
     emitUpdate({ fillColor: color }, { force: true });
   };
 
+  const handleFontColorChange = (color) => {
+    emitUpdate({ fontColor: color }, { force: true });
+  };
+
   const handleFontSizeChange = (newSize) => {
     emitUpdate({ fontSize: newSize }, { force: true });
   };
@@ -382,6 +386,7 @@ const CanvasElement = ({
             style={{
               fontSize: `${fontSize}px`,
               textAlign: textAlign,
+              color: element.fontColor || "#1F2937",
             }}
           />
           {/* Hidden div to measure text content for auto-sizing shapes */}
@@ -428,7 +433,12 @@ const CanvasElement = ({
           }}
         >
           {displayContent ? (
-            <span style={{ textAlign: textAlign }}>
+            <span
+              style={{
+                textAlign: textAlign,
+                color: element.fontColor || "#1F2937",
+              }}
+            >
               <FormattedText content={displayContent} />
             </span>
           ) : (
@@ -573,14 +583,24 @@ const CanvasElement = ({
                 <div className="flex items-center gap-2">
                   <ColorButton
                     isSoft={false}
-                    onColorSelect={handleStrokeColorChange}
+                    onColorSelect={handleFontColorChange}
                     alwaysVisible
+                    label="A"
                   />
-                  <ColorButton
-                    isSoft={true}
-                    onColorSelect={handleFillColorChange}
-                    alwaysVisible
-                  />
+                  {!isTextOnly && (
+                    <>
+                      <ColorButton
+                        isSoft={false}
+                        onColorSelect={handleStrokeColorChange}
+                        alwaysVisible
+                      />
+                      <ColorButton
+                        isSoft={true}
+                        onColorSelect={handleFillColorChange}
+                        alwaysVisible
+                      />
+                    </>
+                  )}
                 </div>
 
                 <div className="w-px h-5 bg-gray-200" />

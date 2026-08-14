@@ -36,10 +36,26 @@ const SOFT_COLORS = [
  *   `.group` ancestor" behavior and just show the button. Needed when the
  *   button is rendered somewhere (e.g. the floating element toolbar) that
  *   isn't a descendant of the canvas element's `.group` wrapper anymore.
+ * @param {string} label - optional custom label for the button (e.g., "T" for text color).
+ *   Defaults to "O" for outline or "F" for fill based on isSoft.
  */
-const ColorButton = ({ isSoft = false, onColorSelect, alwaysVisible = false }) => {
+const ColorButton = ({
+  isSoft = false,
+  onColorSelect,
+  alwaysVisible = false,
+  label,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const colors = isSoft ? SOFT_COLORS : BRIGHT_COLORS;
+  const buttonLabel = label !== undefined ? label : isSoft ? "F" : "O";
+  const ariaLabel =
+    label !== undefined ? label : isSoft ? "Fill color" : "Outline color";
+  const titleText =
+    label !== undefined
+      ? `${label} color`
+      : isSoft
+        ? "Fill color"
+        : "Outline color";
 
   const handleColorClick = (hex) => {
     onColorSelect(hex);
@@ -60,10 +76,10 @@ const ColorButton = ({ isSoft = false, onColorSelect, alwaysVisible = false }) =
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        aria-label={isSoft ? "Fill color" : "Outline color"}
-        title={isSoft ? "Fill color" : "Outline color"}
+        aria-label={`Select ${ariaLabel}`}
+        title={titleText}
       >
-        {isSoft ? "F" : "O"}
+        {buttonLabel}
       </button>
 
       {isOpen && (
