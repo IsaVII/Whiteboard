@@ -28,6 +28,10 @@ const boardSchema = new mongoose.Schema(
             createdBy: String,
             strokeColor: { type: String, default: "#4F46E5" },
             fillColor: { type: String, default: "#FFFFFF" },
+            fontSize: { type: Number, default: 14 },
+            textAlign: { type: String, default: "left" },
+            verticalAlign: { type: String, default: "middle" },
+            formattedContent: { type: String, default: "" }, // Stores HTML-like formatting: "Text <b>bold</b> <i>italic</i>"
           },
           { _id: false },
         ),

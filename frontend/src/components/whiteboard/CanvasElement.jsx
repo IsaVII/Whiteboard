@@ -4,6 +4,16 @@ import { socket } from "../../redux/services/socket";
 import { elementUpdated, elementRemoved } from "../../redux/slices/boardSlice";
 import ColorButton from "./ColorButton";
 import Modal from "../Modal";
+import ToolbarButton from "./ToolbarButton";
+import ToolbarGroup from "./ToolbarGroup";
+import ShapeBackground from "./ShapeBackground";
+import FormattedText from "./FormattedText";
+import { useDraggableElement } from "./useDraggableElement";
+import {
+  getSelectionFormat,
+  toggleSelectionFormat,
+  clearSelectionFormat,
+} from "./textFormatting";
 
 const DRAG_EMIT_INTERVAL_MS = 40;
 const MIN_WIDTH = 80;
@@ -18,19 +28,22 @@ const MIN_HEIGHT = 40;
 const CanvasElement = ({ element, boardId, scale }) => {
   const dispatch = useDispatch();
   const [isEditing, setIsEditing] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [fontSize, setFontSize] = useState(element.fontSize || 14);
-  const [textAlign, setTextAlign] = useState(element.textAlign || "left");
-  const [verticalAlign, setVerticalAlign] = useState(
-    element.verticalAlign || "middle",
-  );
-  const [isBold, setIsBold] = useState(element.isBold || false);
-  const [isItalic, setIsItalic] = useState(element.isItalic || false);
-  const dragRef = useRef(null); // {startClientX, startClientY, startX, startY}
+  // Local buffer for the textarea while editing only. Everything else
+  // (fontSize, textAlign, verticalAlign, the non-editing display text) is
+  // read directly from `element` below so a remote update always shows up
+  // immediately instead of needing a page refresh.
+  const [editValue, setEditValue] = useState("");
   const lastEmitRef = useRef(0);
   const textareaRef = useRef(null);
   const measureDivRef = useRef(null);
+  const pendingSelectionRef = useRef(null); // {start, end} to restore after a formatting toggle
+
+  const isTextOnly = element.type === "text";
+  const fontSize = element.fontSize || 14;
+  const textAlign = element.textAlign || "left";
+  const verticalAlign = element.verticalAlign || "middle";
+  const displayContent = element.formattedContent || element.content || "";
 
   const emitUpdate = useCallback(
     (updates, { force = false } = {}) => {
@@ -52,56 +65,40 @@ const CanvasElement = ({ element, boardId, scale }) => {
     [dispatch, boardId, element.id],
   );
 
-  const handlePointerDown = (e) => {
-    if (isEditing) return;
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startX: element.x,
-      startY: element.y,
-    };
-    setDragging(true);
-  };
+  const { dragging, handlePointerDown, handlePointerMove, endDrag } =
+    useDraggableElement({
+      x: element.x,
+      y: element.y,
+      scale,
+      disabled: isEditing,
+      onMove: emitUpdate,
+    });
 
-  const handlePointerMove = (e) => {
-    if (!dragRef.current) return;
-    e.stopPropagation();
-    const { startClientX, startClientY, startX, startY } = dragRef.current;
-    const dx = (e.clientX - startClientX) / scale;
-    const dy = (e.clientY - startClientY) / scale;
-    emitUpdate({ x: startX + dx, y: startY + dy });
-  };
-
-  const endDrag = (e) => {
-    if (!dragRef.current) return;
-    e.stopPropagation();
-    const { startClientX, startClientY, startX, startY } = dragRef.current;
-    const dx = (e.clientX - startClientX) / scale;
-    const dy = (e.clientY - startClientY) / scale;
-    // Force this last one through even if we're inside the throttle
-    // window, so the final position never gets dropped.
-    emitUpdate({ x: startX + dx, y: startY + dy }, { force: true });
-    dragRef.current = null;
-    setDragging(false);
+  const handleStartEditing = () => {
+    // Seed the editing buffer from the latest server/Redux state (not a
+    // possibly-stale local copy) every time editing begins.
+    setEditValue(displayContent);
+    setIsEditing(true);
   };
 
   const handleTextChange = (e) => {
-    // Local-only while typing so we don't flood the socket on every
-    // keystroke; broadcast once on blur.
+    const value = e.target.value;
+    setEditValue(value);
+    // Keep Redux's plain `content` in sync locally on every keystroke (this
+    // drives the auto-grow measurement div below) without flooding the
+    // socket; the full formattedContent broadcast happens once on blur.
     dispatch(
       elementUpdated({
         elementId: element.id,
-        updates: { content: e.target.value },
+        updates: { content: value },
       }),
     );
   };
 
-  const handleTextBlur = (e) => {
+  const handleTextBlur = () => {
+    const textarea = textareaRef.current;
     // Measure and update size before closing edit mode
-    if (!isTextOnly && element.type !== "text" && textareaRef.current) {
-      const textarea = textareaRef.current;
+    if (!isTextOnly && textarea) {
       const scrollWidth = Math.max(textarea.scrollWidth, MIN_WIDTH);
       const scrollHeight = Math.max(textarea.scrollHeight, MIN_HEIGHT);
 
@@ -117,12 +114,10 @@ const CanvasElement = ({ element, boardId, scale }) => {
     }
 
     setIsEditing(false);
-    if (!boardId) return;
-    socket.emit("element-updated", {
-      boardId,
-      elementId: element.id,
-      updates: { content: e.target.value },
-    });
+    // Broadcast the final formatted text through the same emitUpdate path
+    // as everything else, so it's dispatched to Redux and sent to the
+    // socket consistently.
+    emitUpdate({ formattedContent: editValue }, { force: true });
   };
 
   // Update measurement div when content changes during editing
@@ -132,14 +127,18 @@ const CanvasElement = ({ element, boardId, scale }) => {
       element.content || "Double-click to add text";
   }, [isEditing, element.content]);
 
-  // Sync text formatting properties when element changes
+  // Restore focus + selection after a formatting toggle re-renders the
+  // (controlled) textarea with new content — otherwise the browser drops
+  // the cursor/selection and the next toolbar click has nothing to act on.
   useEffect(() => {
-    setFontSize(element.fontSize || 14);
-    setTextAlign(element.textAlign || "left");
-    setVerticalAlign(element.verticalAlign || "middle");
-    setIsBold(element.isBold || false);
-    setIsItalic(element.isItalic || false);
-  }, [element.id]);
+    if (!isEditing || !pendingSelectionRef.current || !textareaRef.current)
+      return;
+    const { start, end } = pendingSelectionRef.current;
+    const textarea = textareaRef.current;
+    textarea.focus();
+    textarea.setSelectionRange(start, end);
+    pendingSelectionRef.current = null;
+  }, [editValue, isEditing]);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -168,44 +167,75 @@ const CanvasElement = ({ element, boardId, scale }) => {
   };
 
   const handleFontSizeChange = (newSize) => {
-    setFontSize(newSize);
     emitUpdate({ fontSize: newSize }, { force: true });
   };
 
   const handleTextAlignChange = (align) => {
-    setTextAlign(align);
     emitUpdate({ textAlign: align }, { force: true });
   };
 
   const handleVerticalAlignChange = (align) => {
-    setVerticalAlign(align);
     emitUpdate({ verticalAlign: align }, { force: true });
   };
 
+  // Applies the result of a textFormatting helper (or does nothing if
+  // there was no selection to act on) and queues the selection restore.
+  const applySelectionUpdate = (result) => {
+    if (!result) return;
+    setEditValue(result.content);
+    pendingSelectionRef.current = {
+      start: result.selectionStart,
+      end: result.selectionEnd,
+    };
+    emitUpdate({ formattedContent: result.content }, { force: true });
+  };
+
   const handleBoldToggle = () => {
-    const newBoldState = !isBold;
-    setIsBold(newBoldState);
-    emitUpdate({ isBold: newBoldState }, { force: true });
-  };
-
-  const handleItalicToggle = () => {
-    const newItalicState = !isItalic;
-    setIsItalic(newItalicState);
-    emitUpdate({ isItalic: newItalicState }, { force: true });
-  };
-
-  const handleNormalToggle = () => {
-    const newBoldState = false;
-    const newItalicState = false;
-    setIsBold(newBoldState);
-    setIsItalic(newItalicState);
-    emitUpdate(
-      { isBold: newBoldState, isItalic: newItalicState },
-      { force: true },
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    applySelectionUpdate(
+      toggleSelectionFormat(
+        textarea.value,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        "bold",
+      ),
     );
   };
 
-  const isTextOnly = element.type === "text";
+  const handleItalicToggle = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    applySelectionUpdate(
+      toggleSelectionFormat(
+        textarea.value,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        "italic",
+      ),
+    );
+  };
+
+  const handleNormalToggle = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    applySelectionUpdate(
+      clearSelectionFormat(
+        textarea.value,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+      ),
+    );
+  };
+
+  const selectedFormat =
+    isEditing && textareaRef.current
+      ? getSelectionFormat(
+          textareaRef.current.value,
+          textareaRef.current.selectionStart,
+          textareaRef.current.selectionEnd,
+        )
+      : { bold: false, italic: false };
 
   return (
     <div
@@ -223,47 +253,18 @@ const CanvasElement = ({ element, boardId, scale }) => {
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onDoubleClick={() => setIsEditing(true)}
+      onDoubleClick={handleStartEditing}
       // Stop touch events from also reaching Canvas's pan/pinch
       // handlers, which listen on the same element tree.
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
     >
       {!isTextOnly && (
-        <>
-          {element.shapeType === "star" ? (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundColor: element.fillColor || "#FEF3C7",
-                clipPath: `polygon(
-                  50% 0%,
-                  61% 35%,
-                  98% 35%,
-                  68% 57%,
-                  79% 91%,
-                  50% 70%,
-                  21% 91%,
-                  32% 57%,
-                  2% 35%,
-                  39% 35%
-                )`,
-              }}
-            />
-          ) : (
-            <div
-              className={`absolute inset-0 shadow-sm pointer-events-none ${
-                element.shapeType === "rectangle" ? "rounded-lg" : ""
-              } ${element.shapeType === "circle" ? "rounded-full" : ""}`}
-              style={{
-                backgroundColor: element.fillColor || "#FFFFFF",
-                borderWidth: "2px",
-                borderColor: element.strokeColor || "#4F46E5",
-                opacity: 0.85,
-              }}
-            />
-          )}
-        </>
+        <ShapeBackground
+          shapeType={element.shapeType}
+          fillColor={element.fillColor}
+          strokeColor={element.strokeColor}
+        />
       )}
 
       {isEditing ? (
@@ -276,15 +277,13 @@ const CanvasElement = ({ element, boardId, scale }) => {
                 : ""
             }`}
             autoFocus
-            defaultValue={element.content}
+            value={editValue}
             onChange={handleTextChange}
             onBlur={handleTextBlur}
             onPointerDown={(e) => e.stopPropagation()}
             style={{
               fontSize: `${fontSize}px`,
               textAlign: textAlign,
-              fontWeight: isBold ? "bold" : "normal",
-              fontStyle: isItalic ? "italic" : "normal",
             }}
           />
           {/* Hidden div to measure text content for auto-sizing shapes */}
@@ -310,8 +309,6 @@ const CanvasElement = ({ element, boardId, scale }) => {
           }`}
           style={{
             fontSize: `${fontSize}px`,
-            fontWeight: isBold ? "bold" : "normal",
-            fontStyle: isItalic ? "italic" : "normal",
             ...(isTextOnly
               ? {}
               : {
@@ -330,8 +327,10 @@ const CanvasElement = ({ element, boardId, scale }) => {
                 }),
           }}
         >
-          {element.content ? (
-            <span style={{ textAlign: textAlign }}>{element.content}</span>
+          {displayContent ? (
+            <span style={{ textAlign: textAlign }}>
+              <FormattedText content={displayContent} />
+            </span>
           ) : (
             <span
               className={`text-gray-400 italic text-xs ${isTextOnly ? "" : "absolute"}`}
@@ -342,195 +341,135 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       )}
 
-      {/* Font size buttons - always visible */}
-      {!isEditing && (
-        <div
-          className={`absolute -top-4 left-25 flex gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
+      {/* Font size buttons */}
+      <ToolbarGroup position="-top-4 left-25" hidden={isEditing}>
+        <ToolbarButton
+          title="Decrease font size"
+          className="text-xs rounded"
+          onClick={() => handleFontSizeChange(Math.max(8, fontSize - 2))}
         >
-          <button
-            type="button"
-            title="Decrease font size"
-            onClick={() => handleFontSizeChange(Math.max(8, fontSize - 2))}
-            className="w-6 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center cursor-pointer shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            −
-          </button>
-          <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none pointer-events-none">
-            {fontSize}px
-          </div>
-          <button
-            type="button"
-            title="Increase font size"
-            onClick={() => handleFontSizeChange(Math.min(20, fontSize + 2))}
-            className="w-6 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center cursor-pointer shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            +
-          </button>
+          −
+        </ToolbarButton>
+        <div className="w-10 h-6 rounded border border-gray-300 bg-white text-gray-600 text-xs flex items-center justify-center shadow-sm select-none pointer-events-none">
+          {fontSize}px
         </div>
-      )}
+        <ToolbarButton
+          title="Increase font size"
+          className="text-xs rounded"
+          onClick={() => handleFontSizeChange(Math.min(20, fontSize + 2))}
+        >
+          +
+        </ToolbarButton>
+      </ToolbarGroup>
 
-      {/* Horizontal text align buttons - always visible */}
-      <div
-        className={`absolute -top-4 left-0 flex gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
-      >
-        <button
-          type="button"
+      {/* Horizontal text align buttons */}
+      <ToolbarGroup position="-top-4 left-0" hidden={isEditing}>
+        <ToolbarButton
           title="Align left"
+          className="text-xs rounded"
+          active={textAlign === "left"}
           onClick={() => handleTextAlignChange("left")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            textAlign === "left"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ⬅
-        </button>
-        <button
-          type="button"
+        </ToolbarButton>
+        <ToolbarButton
           title="Align center"
+          className="text-xs rounded"
+          active={textAlign === "center"}
           onClick={() => handleTextAlignChange("center")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            textAlign === "center"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ⬌
-        </button>
-        <button
-          type="button"
+        </ToolbarButton>
+        <ToolbarButton
           title="Align right"
+          className="text-xs rounded"
+          active={textAlign === "right"}
           onClick={() => handleTextAlignChange("right")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            textAlign === "right"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ➡
-        </button>
-      </div>
+        </ToolbarButton>
+      </ToolbarGroup>
 
-      {/* Vertical text align buttons - always visible */}
-      <div
-        className={`absolute top-4 -left-4 flex flex-col gap-1 z-[50] ${isEditing ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
-      >
-        <button
-          type="button"
+      {/* Vertical text align buttons */}
+      <ToolbarGroup position="top-4 -left-4" direction="col" hidden={isEditing}>
+        <ToolbarButton
           title="Align top"
+          className="text-xs rounded"
+          active={verticalAlign === "top"}
           onClick={() => handleVerticalAlignChange("top")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            verticalAlign === "top"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ⬆
-        </button>
-        <button
-          type="button"
+        </ToolbarButton>
+        <ToolbarButton
           title="Align middle"
+          className="text-xs rounded"
+          active={verticalAlign === "middle"}
           onClick={() => handleVerticalAlignChange("middle")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            verticalAlign === "middle"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ⬌
-        </button>
-        <button
-          type="button"
+        </ToolbarButton>
+        <ToolbarButton
           title="Align bottom"
+          className="text-xs rounded"
+          active={verticalAlign === "bottom"}
           onClick={() => handleVerticalAlignChange("bottom")}
-          className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-            verticalAlign === "bottom"
-              ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-          }`}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           ⬇
-        </button>
-      </div>
+        </ToolbarButton>
+      </ToolbarGroup>
 
-      {/* Text formatting buttons - normal, bold and italic */}
+      {/* Text formatting buttons - normal, bold and italic. Mounted only
+          while editing (rather than faded like the groups above), and each
+          one keeps focus on the textarea so clicking it doesn't blur out
+          of edit mode. */}
       {isEditing && (
-        <div className="absolute -top-4 left-64 flex gap-1 z-[50] ">
-          <button
-            type="button"
+        <div className="absolute -top-4 left-64 flex gap-1 z-[50]">
+          <ToolbarButton
             title="Normal"
+            className="text-xs rounded"
+            active={!selectedFormat.bold && !selectedFormat.italic}
             onClick={handleNormalToggle}
-            className={`w-6 h-6 rounded border text-xs flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-              !isBold && !isItalic
-                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-            }`}
-            onPointerDown={(e) => e.stopPropagation()}
+            keepFocusOnTextarea
           >
             N
-          </button>
-          <button
-            type="button"
+          </ToolbarButton>
+          <ToolbarButton
             title="Bold"
+            className="text-xs rounded font-bold"
+            active={selectedFormat.bold}
             onClick={handleBoldToggle}
-            className={`w-6 h-6 rounded border text-xs font-bold flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-              isBold
-                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-            }`}
-            onPointerDown={(e) => e.stopPropagation()}
+            keepFocusOnTextarea
           >
             B
-          </button>
-          <button
-            type="button"
+          </ToolbarButton>
+          <ToolbarButton
             title="Italic"
+            className="text-xs rounded italic"
+            active={selectedFormat.italic}
             onClick={handleItalicToggle}
-            className={`w-6 h-6 rounded border text-xs italic flex items-center justify-center cursor-pointer shadow-sm transition-colors ${
-              isItalic
-                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-600 hover:bg-gray-100"
-            }`}
-            onPointerDown={(e) => e.stopPropagation()}
+            keepFocusOnTextarea
           >
             I
-          </button>
+          </ToolbarButton>
         </div>
       )}
-      <button
-        type="button"
-        className={`absolute -top-1 -right-2 w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300 ${
-          isEditing
-            ? "opacity-0 pointer-events-none"
-            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-        }`}
-        onPointerDown={(e) => e.stopPropagation()}
+
+      <ToolbarButton
+        tone="danger"
+        hidden={isEditing}
+        className="text-sm leading-none rounded-full absolute -top-1 -right-2 z-[2]"
         onClick={handleDeleteClick}
-        aria-label="Delete"
         title="Delete"
+        aria-label="Delete"
       >
         ×
-      </button>
+      </ToolbarButton>
 
       {/* Color picker buttons - vertically stacked below delete button */}
-      <div
-        className={`absolute top-7 -right-2 flex flex-col gap-1 z-[100] transition-opacity ${
-          isEditing
-            ? "opacity-0 pointer-events-none"
-            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-        }`}
-      >
+      <ToolbarGroup position="top-7 -right-2" direction="col" hidden={isEditing}>
         <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
         <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
-      </div>
+      </ToolbarGroup>
 
       {/* Delete confirmation modal */}
       <Modal
