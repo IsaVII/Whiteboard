@@ -26,6 +26,8 @@ const boardSchema = new mongoose.Schema(
             height: Number,
             content: String,
             createdBy: String,
+            strokeColor: { type: String, default: "#4F46E5" },
+            fillColor: { type: String, default: "#FFFFFF" },
           },
           { _id: false },
         ),

@@ -2,6 +2,8 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { socket } from "../../redux/services/socket";
 import { elementUpdated, elementRemoved } from "../../redux/slices/boardSlice";
+import ColorButton from "./ColorButton";
+import Modal from "../Modal";
 
 const DRAG_EMIT_INTERVAL_MS = 40;
 const MIN_WIDTH = 80;
@@ -17,6 +19,7 @@ const CanvasElement = ({ element, boardId, scale }) => {
   const dispatch = useDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const dragRef = useRef(null); // {startClientX, startClientY, startX, startY}
   const lastEmitRef = useRef(0);
   const textareaRef = useRef(null);
@@ -130,6 +133,24 @@ const CanvasElement = ({ element, boardId, scale }) => {
     }
   };
 
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteModal(false);
+    handleDelete({ stopPropagation: () => {} });
+  };
+
+  const handleStrokeColorChange = (color) => {
+    emitUpdate({ strokeColor: color }, { force: true });
+  };
+
+  const handleFillColorChange = (color) => {
+    emitUpdate({ fillColor: color }, { force: true });
+  };
+
   const isTextOnly = element.type === "text";
 
   return (
@@ -158,8 +179,9 @@ const CanvasElement = ({ element, boardId, scale }) => {
         <>
           {element.shapeType === "star" ? (
             <div
-              className="absolute inset-0 bg-yellow-200 pointer-events-none"
+              className="absolute inset-0 pointer-events-none"
               style={{
+                backgroundColor: element.fillColor || "#FEF3C7",
                 clipPath: `polygon(
                   50% 0%,
                   61% 35%,
@@ -176,9 +198,15 @@ const CanvasElement = ({ element, boardId, scale }) => {
             />
           ) : (
             <div
-              className={`absolute inset-0 bg-white/85 border-2 border-indigo-500 shadow-sm pointer-events-none ${
+              className={`absolute inset-0 shadow-sm pointer-events-none ${
                 element.shapeType === "rectangle" ? "rounded-lg" : ""
               } ${element.shapeType === "circle" ? "rounded-full" : ""}`}
+              style={{
+                backgroundColor: element.fillColor || "#FFFFFF",
+                borderWidth: "2px",
+                borderColor: element.strokeColor || "#4F46E5",
+                opacity: 0.85,
+              }}
             />
           )}
         </>
@@ -233,16 +261,42 @@ const CanvasElement = ({ element, boardId, scale }) => {
         </div>
       )}
 
+      {/* Font size buttons */}
+
+      {/* Text align buttons */}
+
+      {/* Delete button */}
       <button
         type="button"
-        className="absolute -top-2 -right-2 w-5 h-5 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+        className="absolute -top-1 -right-2 w-6 h-6 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={handleDelete}
+        onClick={handleDeleteClick}
         aria-label="Delete"
         title="Delete"
       >
         ×
       </button>
+
+      {/* Color picker buttons - vertically stacked below delete button */}
+      <div className="absolute top-7 -right-2 flex flex-col gap-1 z-[100]">
+        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <ColorButton isSoft={false} onColorSelect={handleStrokeColorChange} />
+        </div>
+        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <ColorButton isSoft={true} onColorSelect={handleFillColorChange} />
+        </div>
+      </div>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        title="Delete Element"
+        message="Are you sure you want to delete this element? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
