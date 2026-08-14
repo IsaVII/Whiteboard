@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { socket } from "../../redux/services/socket";
 import { elementUpdated, elementRemoved } from "../../redux/slices/boardSlice";
-import "./CanvasElement.css";
 
 const DRAG_EMIT_INTERVAL_MS = 40;
+const MIN_WIDTH = 80;
+const MIN_HEIGHT = 40;
 
 /**
  * A single shape (with optional inline text) or a plain textbox, sitting
@@ -18,6 +19,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(null); // {startClientX, startClientY, startX, startY}
   const lastEmitRef = useRef(0);
+  const textareaRef = useRef(null);
+  const measureDivRef = useRef(null);
 
   const emitUpdate = useCallback(
     (updates, { force = false } = {}) => {
@@ -86,6 +89,23 @@ const CanvasElement = ({ element, boardId, scale }) => {
   };
 
   const handleTextBlur = (e) => {
+    // Measure and update size before closing edit mode
+    if (!isTextOnly && element.type !== "text" && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const scrollWidth = Math.max(textarea.scrollWidth, MIN_WIDTH);
+      const scrollHeight = Math.max(textarea.scrollHeight, MIN_HEIGHT);
+
+      // Add padding (matching the element's padding)
+      const padding = 16; // 2 * 8px padding
+      const newWidth = Math.max(scrollWidth + padding, MIN_WIDTH);
+      const newHeight = Math.max(scrollHeight + padding, MIN_HEIGHT);
+
+      // Only update if dimensions changed
+      if (newWidth !== element.width || newHeight !== element.height) {
+        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
+      }
+    }
+
     setIsEditing(false);
     if (!boardId) return;
     socket.emit("element-updated", {
@@ -94,6 +114,13 @@ const CanvasElement = ({ element, boardId, scale }) => {
       updates: { content: e.target.value },
     });
   };
+
+  // Update measurement div when content changes during editing
+  useEffect(() => {
+    if (!isEditing || !measureDivRef.current) return;
+    measureDivRef.current.textContent =
+      element.content || "Double-click to add text";
+  }, [isEditing, element.content]);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -107,8 +134,8 @@ const CanvasElement = ({ element, boardId, scale }) => {
 
   return (
     <div
-      className={`canvas-element${dragging ? " canvas-element--dragging" : ""}${
-        isTextOnly ? " canvas-element--text" : ""
+      className={`absolute flex cursor-grab select-none touch-none group ${
+        dragging ? "cursor-grabbing z-20" : ""
       }`}
       style={{
         left: element.x,
@@ -128,22 +155,78 @@ const CanvasElement = ({ element, boardId, scale }) => {
       onTouchMove={(e) => e.stopPropagation()}
     >
       {!isTextOnly && (
-        <div className={`canvas-shape canvas-shape--${element.shapeType}`} />
+        <>
+          {element.shapeType === "star" ? (
+            <div
+              className="absolute inset-0 bg-yellow-200 pointer-events-none"
+              style={{
+                clipPath: `polygon(
+                  50% 0%,
+                  61% 35%,
+                  98% 35%,
+                  68% 57%,
+                  79% 91%,
+                  50% 70%,
+                  21% 91%,
+                  32% 57%,
+                  2% 35%,
+                  39% 35%
+                )`,
+              }}
+            />
+          ) : (
+            <div
+              className={`absolute inset-0 bg-white/85 border-2 border-indigo-500 shadow-sm pointer-events-none ${
+                element.shapeType === "rectangle" ? "rounded-lg" : ""
+              } ${element.shapeType === "circle" ? "rounded-full" : ""}`}
+            />
+          )}
+        </>
       )}
 
       {isEditing ? (
-        <textarea
-          className="canvas-element-textarea"
-          autoFocus
-          defaultValue={element.content}
-          onChange={handleTextChange}
-          onBlur={handleTextBlur}
-          onPointerDown={(e) => e.stopPropagation()}
-        />
+        <>
+          <textarea
+            ref={textareaRef}
+            className={`relative z-[1] w-full h-full p-2 text-xs text-gray-800 break-words resize-none border-0 outline-none bg-transparent font-inherit text-inherit whitespace-pre-wrap ${
+              isTextOnly
+                ? "border border-dashed border-gray-400 rounded bg-white/60"
+                : ""
+            }`}
+            autoFocus
+            defaultValue={element.content}
+            onChange={handleTextChange}
+            onBlur={handleTextBlur}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+          {/* Hidden div to measure text content for auto-sizing shapes */}
+          {!isTextOnly && (
+            <div
+              ref={measureDivRef}
+              className="invisible absolute whitespace-pre-wrap break-words p-2 text-xs text-gray-800 pointer-events-none"
+              style={{
+                width: "100%",
+                maxWidth: "500px",
+              }}
+            >
+              {element.content || "Double-click to add text"}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="canvas-element-content">
-          {element.content || (
-            <span className="canvas-element-placeholder">
+        <div
+          className={`relative z-[1] w-full h-full p-2 text-xs text-gray-800 break-words whitespace-pre-wrap ${
+            isTextOnly
+              ? "border border-dashed border-transparent rounded group-hover:border-gray-400 group-hover:bg-white/60"
+              : "flex items-center justify-center text-center"
+          }`}
+        >
+          {element.content ? (
+            <span>{element.content}</span>
+          ) : (
+            <span
+              className={`text-gray-400 italic text-xs ${isTextOnly ? "" : "absolute"}`}
+            >
               {isTextOnly ? "Double-click to type" : "Double-click to add text"}
             </span>
           )}
@@ -152,7 +235,7 @@ const CanvasElement = ({ element, boardId, scale }) => {
 
       <button
         type="button"
-        className="canvas-element-delete"
+        className="absolute -top-2 -right-2 w-5 h-5 rounded-full border border-gray-300 bg-white text-gray-500 text-sm leading-none flex items-center justify-center cursor-pointer shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity z-[2] hover:bg-red-50 hover:text-red-700 hover:border-red-300"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={handleDelete}
         aria-label="Delete"
