@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import Modal from "../Modal";
 import CanvasButton from "./CanvasButton";
 import RemoteCursor from "./RemoteCursor";
@@ -124,15 +125,18 @@ const Canvas = () => {
       </CanvasButton>
 
       {/* Delete all confirmation modal */}
-      <Modal
-        isOpen={showDeleteAllModal}
-        title="Delete All Elements"
-        message="Are you REALLY sure you want to delete ALL ELEMENTS?"
-        onConfirm={confirmDeleteAll}
-        onCancel={() => setShowDeleteAllModal(false)}
-        confirmText="Yes, Delete All"
-        cancelText="Cancel"
-      />
+      {createPortal(
+        <Modal
+          isOpen={showDeleteAllModal}
+          title="Delete All Elements"
+          message="Are you REALLY sure you want to delete ALL ELEMENTS?"
+          onConfirm={confirmDeleteAll}
+          onCancel={() => setShowDeleteAllModal(false)}
+          confirmText="Yes, Delete All"
+          cancelText="Cancel"
+        />,
+        document.body,
+      )}
     </div>
   );
 };

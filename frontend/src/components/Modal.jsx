@@ -60,8 +60,11 @@ const Modal = ({
 
       {/* Modal */}
       <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl p-6 z-[9999] max-w-sm w-full mx-4 pointer-events-auto"
+        className="fixed rounded-lg shadow-xl p-6 z-[9999] max-w-sm w-full mx-4 pointer-events-auto"
         style={{
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
           backgroundColor: "var(--bg_modal)",
           color: "var(--text)",
         }}

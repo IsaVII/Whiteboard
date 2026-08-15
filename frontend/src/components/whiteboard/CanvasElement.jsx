@@ -383,15 +383,18 @@ const CanvasElement = ({
         )}
 
       {/* Delete confirmation modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        title="Delete Element"
-        message="Are you sure you want to delete this element? This action cannot be undone."
-        onConfirm={confirmDelete}
-        onCancel={() => setShowDeleteModal(false)}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
+      {createPortal(
+        <Modal
+          isOpen={showDeleteModal}
+          title="Delete Element"
+          message="Are you sure you want to delete this element? This action cannot be undone."
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />,
+        document.body,
+      )}
     </div>
   );
 };
