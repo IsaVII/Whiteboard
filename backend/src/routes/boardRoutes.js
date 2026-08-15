@@ -4,6 +4,7 @@ const {
   getAllBoards,
   createBoard,
   renameBoard,
+  deleteBoard,
 } = require("../controllers/boardController");
 
 const router = express.Router();
@@ -19,5 +20,8 @@ router.get("/:boardId", getOrCreateBoard);
 
 // PUT /api/boards/:boardId - rename a board
 router.put("/:boardId", renameBoard);
+
+// DELETE /api/boards/:boardId - delete a board
+router.delete("/:boardId", deleteBoard);
 
 module.exports = router;

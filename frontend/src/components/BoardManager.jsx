@@ -1,4 +1,5 @@
 import { useBoardManager } from "../redux/actions/useBoardManager.js";
+import Modal from "./Modal";
 import "./BoardManager.css";
 
 const BoardManager = () => {
@@ -31,14 +32,24 @@ const BoardManager = () => {
       {/* Save Board with New Name Section */}
       <div className="board-manager-section">
         {!state.renameMode ? (
-          <button
-            onClick={() => actions.setRenameMode(true)}
-            disabled={state.loading}
-            className="board-manager-btn rename-btn"
-            title="Save current board under a new name"
-          >
-            ✓ Save As
-          </button>
+          <>
+            <button
+              onClick={() => actions.setRenameMode(true)}
+              disabled={state.loading}
+              className="board-manager-btn rename-btn"
+              title="Save current board under a new name"
+            >
+              ✓ Save As
+            </button>
+            <button
+              onClick={() => actions.openDeleteModal(state.currentBoardId)}
+              disabled={state.loading || !state.currentBoardId}
+              className="board-manager-btn delete-btn"
+              title="Delete current board"
+            >
+              🗑 Delete
+            </button>
+          </>
         ) : (
           <>
             <input
@@ -102,6 +113,14 @@ const BoardManager = () => {
                     >
                       Load
                     </button>
+                    <button
+                      onClick={() => actions.openDeleteModal(board.boardId)}
+                      disabled={state.loading}
+                      className="dropdown-item-delete-btn"
+                      title="Delete board"
+                    >
+                      🗑
+                    </button>
                   </div>
                 ))
               )}
@@ -109,6 +128,17 @@ const BoardManager = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Board Confirmation Modal */}
+      <Modal
+        isOpen={state.showDeleteModal}
+        title="Delete Board"
+        message={`Are you sure you want to delete the board "${state.boardToDelete}"? This action cannot be undone.`}
+        onConfirm={actions.handleDeleteBoard}
+        onCancel={actions.closeDeleteModal}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

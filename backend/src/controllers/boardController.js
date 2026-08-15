@@ -133,4 +133,29 @@ async function renameBoard(req, res) {
   }
 }
 
-module.exports = { getOrCreateBoard, getAllBoards, createBoard, renameBoard };
+// DELETE /api/boards/:boardId
+// Deletes a board
+async function deleteBoard(req, res) {
+  const { boardId } = req.params;
+
+  try {
+    const board = await Board.findOneAndDelete({ boardId });
+    if (!board) {
+      return res.status(404).json({ error: "Board not found" });
+    }
+
+    console.log(`[boardController] deleteBoard: deleted boardId=${boardId}`);
+    res.json({ message: "Board deleted successfully", boardId });
+  } catch (err) {
+    console.error("[boardController] deleteBoard error:", err);
+    res.status(500).json({ error: "Failed to delete board" });
+  }
+}
+
+module.exports = {
+  getOrCreateBoard,
+  getAllBoards,
+  createBoard,
+  renameBoard,
+  deleteBoard,
+};

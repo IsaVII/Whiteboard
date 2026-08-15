@@ -6,6 +6,7 @@ import {
   createNewBoard,
   renameBoard,
   fetchBoard,
+  deleteBoard,
 } from "../services/api";
 import { boardChanged, elementsLoaded } from "../slices/boardSlice";
 
@@ -20,6 +21,8 @@ export const useBoardManager = () => {
   const [renameMode, setRenameMode] = useState(false);
   const [newName, setNewName] = useState(currentBoardName || "");
   const [loading, setLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [boardToDelete, setBoardToDelete] = useState(null);
 
   useEffect(() => {
     loadBoardsList();
@@ -108,6 +111,45 @@ export const useBoardManager = () => {
     }
   };
 
+  const handleDeleteBoard = async () => {
+    if (!boardToDelete) return;
+
+    setLoading(true);
+    try {
+      await deleteBoard(boardToDelete);
+      setShowDeleteModal(false);
+      setBoardToDelete(null);
+
+      // If we deleted the currently open board, leave it
+      if (currentBoardId === boardToDelete) {
+        if (currentBoardId) {
+          socket.emit("leave-board", { boardId: currentBoardId });
+        }
+        dispatch(boardChanged({ boardId: null }));
+        dispatch(elementsLoaded([]));
+      }
+
+      await loadBoardsList();
+    } catch (err) {
+      console.error("Failed to delete board:", err);
+      alert("Error deleting board");
+      setShowDeleteModal(false);
+      setBoardToDelete(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteModal = (boardId) => {
+    setBoardToDelete(boardId);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setBoardToDelete(null);
+  };
+
   return {
     state: {
       boardName,
@@ -118,6 +160,8 @@ export const useBoardManager = () => {
       loading,
       currentBoardName,
       currentBoardId,
+      showDeleteModal,
+      boardToDelete,
     },
     actions: {
       setBoardName,
@@ -127,6 +171,9 @@ export const useBoardManager = () => {
       handleCreateNewBoard,
       handleLoadBoard,
       handleSaveAsNewName,
+      openDeleteModal,
+      closeDeleteModal,
+      handleDeleteBoard,
     },
   };
 };

@@ -61,3 +61,16 @@ export async function renameBoard(boardId, newBoardName) {
   }
   return res.json();
 }
+
+export async function deleteBoard(boardId) {
+  const res = await fetch(`${API_URL}/api/boards/${boardId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete board: ${res.status}`);
+  }
+  return res.json();
+}

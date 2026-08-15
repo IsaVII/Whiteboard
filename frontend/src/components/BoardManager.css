@@ -190,6 +190,39 @@
     cursor: not-allowed;
 }
 
+.delete-btn {
+    background-color: #ef4444;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background-color: #dc2626;
+}
+
+.delete-btn:active:not(:disabled) {
+    background-color: #b91c1c;
+}
+
+.dropdown-item-delete-btn {
+    padding: 0.35rem 0.5rem;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item-delete-btn:hover:not(:disabled) {
+    background-color: #dc2626;
+}
+
+.dropdown-item-delete-btn:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .board-manager {
