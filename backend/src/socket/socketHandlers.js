@@ -114,6 +114,26 @@ function registerSocketHandlers(io) {
       socket.to(boardId).emit("user-joined", { name: anonymousName });
     });
 
+    // Handle user leaving a board
+    socket.on("leave-board", ({ boardId }) => {
+      if (!boardId) return;
+
+      socket.leave(boardId);
+
+      if (roomUsers.has(boardId)) {
+        roomUsers.get(boardId).delete(socket.id);
+        io.to(boardId).emit("user-list", getUsersInRoom(boardId));
+        socket.to(boardId).emit("user-left", { name: anonymousName });
+        // Remove their cursor from everyone else's screen
+        socket.to(boardId).emit("cursor-left", { socketId: socket.id });
+
+        if (roomUsers.get(boardId).size === 0) {
+          roomUsers.delete(boardId);
+          boardState.delete(boardId); // Clean up board state when room is empty
+        }
+      }
+    });
+
     // Client emits this on every text change (ideally throttled/debounced
     // client-side too, e.g. every 100-200ms while typing).
     socket.on("content-change", ({ boardId, content }) => {

@@ -25,3 +25,39 @@ export async function fetchBoard(boardId) {
   }
   return res.json();
 }
+
+export async function listBoards() {
+  const res = await fetch(`${API_URL}/api/boards`);
+  if (!res.ok) {
+    throw new Error(`Failed to load boards: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createNewBoard(boardName) {
+  const res = await fetch(`${API_URL}/api/boards`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ boardId: boardName }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to create board: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function renameBoard(boardId, newBoardName) {
+  const res = await fetch(`${API_URL}/api/boards/${boardId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ boardId: newBoardName }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to rename board: ${res.status}`);
+  }
+  return res.json();
+}

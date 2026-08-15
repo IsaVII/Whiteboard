@@ -13,6 +13,7 @@ const boardSlice = createSlice({
   name: "board",
   initialState: {
     boardId: null,
+    boardName: null, // Display name for the current board
     content: "",
     elements: [], // Array of {id, type, shapeType, x, y, width, height, content, createdBy}
     selectedToolType: "rectangle", // last shape picked from the toolbar dropdown
@@ -23,6 +24,10 @@ const boardSlice = createSlice({
   reducers: {
     connectionStatusChanged(state, action) {
       state.connected = action.payload;
+    },
+    boardChanged(state, action) {
+      state.boardId = action.payload.boardId;
+      state.boardName = action.payload.boardId; // Display the boardId as the name
     },
     // Remembers the last shape picked from the toolbar dropdown so the
     // main button icon and the short-press action reflect it.
@@ -61,6 +66,7 @@ const boardSlice = createSlice({
       .addCase(loadBoard.fulfilled, (state, action) => {
         state.status = "ready";
         state.boardId = action.payload.boardId;
+        state.boardName = action.payload.boardId; // Display the boardId as the name
         state.content = action.payload.content;
         state.elements = action.payload.elements || [];
         state.lastEditor = action.payload.lastEditedBy;
@@ -73,6 +79,7 @@ const boardSlice = createSlice({
 
 export const {
   connectionStatusChanged,
+  boardChanged,
   toolTypeSelected,
   elementsLoaded,
   elementAdded,

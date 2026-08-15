@@ -1,0 +1,213 @@
+.board-manager {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    background-color: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 6px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.board-manager-section {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.board-manager-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+    transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.board-manager-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.board-manager-input:disabled {
+    background-color: var(--code-bg);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.board-manager-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.board-manager-btn:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
+.board-manager-btn:active:not(:disabled) {
+    opacity: 0.7;
+}
+
+.board-manager-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.new-board-btn {
+    background-color: #10b981;
+}
+
+.new-board-btn:hover:not(:disabled) {
+    background-color: #059669;
+}
+
+.new-board-btn:active:not(:disabled) {
+    background-color: #047857;
+}
+
+.rename-btn {
+    background-color: #f59e0b;
+}
+
+.rename-btn:hover:not(:disabled) {
+    background-color: #d97706;
+}
+
+.rename-btn:active:not(:disabled) {
+    background-color: #b45309;
+}
+
+.confirm-btn {
+    background-color: #10b981;
+    padding: 0.5rem 0.75rem;
+}
+
+.cancel-btn {
+    background-color: #ef4444;
+    padding: 0.5rem 0.75rem;
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background-color: #dc2626;
+}
+
+.cancel-btn:active:not(:disabled) {
+    background-color: #b91c1c;
+}
+
+.dropdown-wrapper {
+    position: relative;
+}
+
+.dropdown-btn {
+    min-width: 180px;
+    text-align: left;
+    padding: 0.5rem 1rem;
+}
+
+.board-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-item {
+    padding: 0.75rem;
+    color: #999;
+    font-size: 14px;
+    text-align: center;
+}
+
+.dropdown-item.disabled {
+    color: #999;
+    padding: 1rem;
+}
+
+.dropdown-item-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item-wrapper:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item-wrapper:hover {
+    background-color: #f0f0f0;
+}
+
+.dropdown-item-name {
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+    word-break: break-word;
+    margin-right: 0.5rem;
+}
+
+.dropdown-item-btn {
+    padding: 0.35rem 0.75rem;
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item-btn:hover:not(:disabled) {
+    background-color: #4338ca;
+}
+
+.dropdown-item-btn:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .board-manager {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .board-manager-section {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .board-manager-input {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .dropdown-btn {
+        width: 100%;
+    }
+}

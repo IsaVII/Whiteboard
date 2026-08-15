@@ -10,7 +10,7 @@ import ToolbarGroup from "./ToolbarGroup";
 import ShapeBackground from "./ShapeBackground";
 import FormattedText from "./FormattedText";
 import ElementToolbar from "./ElementToolbar";
-import { useDraggableElement } from "./useDraggableElement";
+import { useDraggableElement } from "../../redux/actions/useDraggableElement";
 import {
   getSelectionFormat,
   toggleSelectionFormat,
