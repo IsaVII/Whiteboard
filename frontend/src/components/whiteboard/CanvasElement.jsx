@@ -1,32 +1,12 @@
-import { useCallback, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useDispatch } from "react-redux";
-import { socket } from "../../redux/services/socket";
-import { elementUpdated, elementRemoved } from "../../redux/slices/boardSlice";
-import ColorButton from "./ColorButton";
 import Modal from "../Modal";
 import ToolbarButton from "./ToolbarButton";
 import ToolbarGroup from "./ToolbarGroup";
 import ShapeBackground from "./ShapeBackground";
 import FormattedText from "./FormattedText";
 import ElementToolbar from "./ElementToolbar";
-import { useDraggableElement } from "../../redux/actions/useDraggableElement";
-import {
-  getSelectionFormat,
-  toggleSelectionFormat,
-  clearSelectionFormat,
-} from "./textFormatting";
+import { useCanvasElement } from "../../redux/actions/useCanvasElement";
 
-const DRAG_EMIT_INTERVAL_MS = 40;
-const MIN_WIDTH = 80;
-const MIN_HEIGHT = 40;
-
-/**
- * A single shape (with optional inline text) or a plain textbox, sitting
- * inside the canvas's transformed viewport. Position/size are stored in
- * untransformed canvas-content coordinates; dragging only needs to divide
- * pointer-movement deltas by the current zoom `scale` to convert them.
- */
 const CanvasElement = ({
   element,
   boardId,
@@ -35,350 +15,44 @@ const CanvasElement = ({
   onSelect,
   toolbarPortalNode,
 }) => {
-  const dispatch = useDispatch();
-  const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [resizing, setResizing] = useState(false);
-  // Local buffer for the textarea while editing only. Everything else
-  // (fontSize, textAlign, verticalAlign, the non-editing display text) is
-  // read directly from `element` below so a remote update always shows up
-  // immediately instead of needing a page refresh.
-  const [editValue, setEditValue] = useState("");
-  const lastEmitRef = useRef(0);
-  const textareaRef = useRef(null);
-  const measureDivRef = useRef(null);
-  const pendingSelectionRef = useRef(null); // {start, end} to restore after a formatting toggle
-  const resizeRef = useRef(null); // {startClientX, startClientY, startWidth, startHeight}
-
-  const isTextOnly = element.type === "text";
-  const fontSize = element.fontSize || 14;
-  const textAlign = element.textAlign || "left";
-  const verticalAlign = element.verticalAlign || "middle";
-  const displayContent = element.formattedContent || element.content || "";
-
-  const emitUpdate = useCallback(
-    (updates, { force = false } = {}) => {
-      // Optimistic local update...
-      dispatch(elementUpdated({ elementId: element.id, updates }));
-
-      // ...throttled broadcast to everyone else on the board.
-      if (!boardId) return;
-      const now = Date.now();
-      if (force || now - lastEmitRef.current >= DRAG_EMIT_INTERVAL_MS) {
-        lastEmitRef.current = now;
-        socket.emit("element-updated", {
-          boardId,
-          elementId: element.id,
-          updates,
-        });
-      }
-    },
-    [dispatch, boardId, element.id],
-  );
-
-  const { dragging, handlePointerDown, handlePointerMove, endDrag } =
-    useDraggableElement({
-      x: element.x,
-      y: element.y,
-      scale,
-      disabled: isEditing,
-      onMove: emitUpdate,
-    });
-
-  const handleSelect = (e) => {
-    // Selection is a plain click, distinct from the double-click that
-    // starts editing. Stop it from bubbling to Canvas's click handler,
-    // which deselects when the click lands on empty canvas space.
-    e.stopPropagation();
-    onSelect?.();
-  };
-
-  const handleStartEditing = () => {
-    // Seed the editing buffer from the latest server/Redux state (not a
-    // possibly-stale local copy) every time editing begins.
-    setEditValue(displayContent);
-    setIsEditing(true);
-  };
-
-  const handleTextChange = (e) => {
-    const value = e.target.value;
-    setEditValue(value);
-    // Keep Redux's plain `content` in sync locally on every keystroke (this
-    // drives the auto-grow measurement div below) without flooding the
-    // socket; the full formattedContent broadcast happens once on blur.
-    dispatch(
-      elementUpdated({
-        elementId: element.id,
-        updates: { content: value },
-      }),
-    );
-  };
-
-  const handleTextBlur = () => {
-    const textarea = textareaRef.current;
-    // Auto-resize only if element was never manually resized
-    if (!isTextOnly && textarea && !element.manuallyResized) {
-      const scrollWidth = Math.max(textarea.scrollWidth, MIN_WIDTH);
-      const scrollHeight = Math.max(textarea.scrollHeight, MIN_HEIGHT);
-
-      // Add padding (matching the element's padding)
-      const padding = 16; // 2 * 8px padding
-      const newWidth = Math.max(scrollWidth + padding, MIN_WIDTH);
-      const newHeight = Math.max(scrollHeight + padding, MIN_HEIGHT);
-
-      // Only update if dimensions changed
-      if (newWidth !== element.width || newHeight !== element.height) {
-        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-      }
-    }
-
-    setIsEditing(false);
-    // Broadcast the final formatted text through the same emitUpdate path
-    // as everything else, so it's dispatched to Redux and sent to the
-    // socket consistently.
-    emitUpdate({ formattedContent: editValue }, { force: true });
-  };
-
-  // Update measurement div when content changes during editing
-  useEffect(() => {
-    if (!isEditing || !measureDivRef.current) return;
-    measureDivRef.current.textContent =
-      element.content || "Double-click to add text";
-  }, [isEditing, element.content]);
-
-  // Restore focus + selection after a formatting toggle re-renders the
-  // (controlled) textarea with new content — otherwise the browser drops
-  // the cursor/selection and the next toolbar click has nothing to act on.
-  useEffect(() => {
-    if (!isEditing || !pendingSelectionRef.current || !textareaRef.current)
-      return;
-    const { start, end } = pendingSelectionRef.current;
-    const textarea = textareaRef.current;
-    textarea.focus();
-    textarea.setSelectionRange(start, end);
-    pendingSelectionRef.current = null;
-  }, [editValue, isEditing]);
-
-  // Auto-resize elements when they're loaded with content (e.g., on page reload).
-  // Only auto-resize if the element hasn't been manually resized by the user.
-  useEffect(() => {
-    if (isEditing || element.manuallyResized || !displayContent) return;
-
-    // Use requestAnimationFrame to ensure the DOM is ready
-    const resizeTimer = requestAnimationFrame(() => {
-      const tempDiv = document.createElement("div");
-      tempDiv.style.visibility = "hidden";
-      tempDiv.style.position = "absolute";
-      tempDiv.style.whiteSpace = "pre-wrap";
-      tempDiv.style.wordWrap = "break-word";
-      tempDiv.style.padding = "8px";
-      tempDiv.style.fontSize = `${fontSize}px`;
-      tempDiv.style.fontFamily = "inherit";
-      tempDiv.style.lineHeight = "1.5";
-      tempDiv.textContent = displayContent;
-      document.body.appendChild(tempDiv);
-
-      const contentWidth = tempDiv.scrollWidth;
-      const contentHeight = tempDiv.scrollHeight;
-      document.body.removeChild(tempDiv);
-
-      const newWidth = Math.max(contentWidth, MIN_WIDTH);
-      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
-
-      // Only update if dimensions differ significantly (allow small variations)
-      if (
-        Math.abs(newWidth - element.width) > 2 ||
-        Math.abs(newHeight - element.height) > 2
-      ) {
-        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-      }
-    });
-
-    return () => cancelAnimationFrame(resizeTimer);
-  }, [
+  const {
+    isTextOnly,
+    fontSize,
+    textAlign,
+    verticalAlign,
     displayContent,
     isEditing,
-    element.manuallyResized,
-    element.width,
-    element.height,
-    element.id,
-    fontSize,
-    emitUpdate,
-  ]);
-
-  const handleDelete = (e) => {
-    e.stopPropagation();
-    dispatch(elementRemoved({ elementId: element.id }));
-    if (boardId) {
-      socket.emit("element-removed", { boardId, elementId: element.id });
-    }
-  };
-
-  const handleDeleteClick = (e) => {
-    e.stopPropagation();
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = () => {
-    setShowDeleteModal(false);
-    handleDelete({ stopPropagation: () => {} });
-  };
-
-  const handleStrokeColorChange = (color) => {
-    emitUpdate({ strokeColor: color }, { force: true });
-  };
-
-  const handleFillColorChange = (color) => {
-    emitUpdate({ fillColor: color }, { force: true });
-  };
-
-  const handleFontColorChange = (color) => {
-    emitUpdate({ fontColor: color }, { force: true });
-  };
-
-  const handleFontSizeChange = (newSize) => {
-    emitUpdate({ fontSize: newSize }, { force: true });
-  };
-
-  const handleTextAlignChange = (align) => {
-    emitUpdate({ textAlign: align }, { force: true });
-  };
-
-  const handleVerticalAlignChange = (align) => {
-    emitUpdate({ verticalAlign: align }, { force: true });
-  };
-
-  const handleResizePointerDown = (e) => {
-    if (isEditing) return;
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    resizeRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startWidth: element.width,
-      startHeight: element.height,
-    };
-    setResizing(true);
-  };
-
-  const handleResizePointerMove = (e) => {
-    if (!resizeRef.current) return;
-    e.stopPropagation();
-    const { startClientX, startClientY, startWidth, startHeight } =
-      resizeRef.current;
-    const dx = (e.clientX - startClientX) / scale;
-    const dy = (e.clientY - startClientY) / scale;
-    const newWidth = Math.max(MIN_WIDTH, startWidth + dx);
-    const newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
-    emitUpdate({ width: newWidth, height: newHeight });
-  };
-
-  const handleResizeEnd = (e) => {
-    if (!resizeRef.current) return;
-    e.stopPropagation();
-    const { startClientX, startClientY, startWidth, startHeight } =
-      resizeRef.current;
-    const dx = (e.clientX - startClientX) / scale;
-    const dy = (e.clientY - startClientY) / scale;
-    const newWidth = Math.max(MIN_WIDTH, startWidth + dx);
-    const newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
-    // Mark element as manually resized so auto-resize won't override it
-    emitUpdate(
-      { width: newWidth, height: newHeight, manuallyResized: true },
-      { force: true },
-    );
-    resizeRef.current = null;
-    setResizing(false);
-  };
-
-  const handleAutoResize = () => {
-    if (!measureDivRef.current) {
-      // Create a temporary measurement div if one doesn't exist (for text-only elements during non-editing)
-      const tempDiv = document.createElement("div");
-      tempDiv.style.visibility = "hidden";
-      tempDiv.style.position = "absolute";
-      tempDiv.style.whiteSpace = "pre-wrap";
-      tempDiv.style.wordWrap = "break-word";
-      tempDiv.style.padding = "8px"; // Match p-2 from the display div
-      tempDiv.style.fontSize = `${fontSize}px`;
-      tempDiv.style.fontFamily = "inherit";
-      tempDiv.style.lineHeight = "1.5";
-      tempDiv.textContent = element.content || "Double-click to add text";
-      document.body.appendChild(tempDiv);
-      const contentWidth = tempDiv.scrollWidth;
-      const contentHeight = tempDiv.scrollHeight;
-      document.body.removeChild(tempDiv);
-      const newWidth = Math.max(contentWidth, MIN_WIDTH);
-      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
-      emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-    } else {
-      // During editing, use the visible measurement div
-      const contentWidth = measureDivRef.current.scrollWidth;
-      const contentHeight = measureDivRef.current.scrollHeight;
-      const newWidth = Math.max(contentWidth, MIN_WIDTH);
-      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
-      emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-    }
-  };
-
-  // Applies the result of a textFormatting helper (or does nothing if
-  // there was no selection to act on) and queues the selection restore.
-  const applySelectionUpdate = (result) => {
-    if (!result) return;
-    setEditValue(result.content);
-    pendingSelectionRef.current = {
-      start: result.selectionStart,
-      end: result.selectionEnd,
-    };
-    emitUpdate({ formattedContent: result.content }, { force: true });
-  };
-
-  const handleBoldToggle = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    applySelectionUpdate(
-      toggleSelectionFormat(
-        textarea.value,
-        textarea.selectionStart,
-        textarea.selectionEnd,
-        "bold",
-      ),
-    );
-  };
-
-  const handleItalicToggle = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    applySelectionUpdate(
-      toggleSelectionFormat(
-        textarea.value,
-        textarea.selectionStart,
-        textarea.selectionEnd,
-        "italic",
-      ),
-    );
-  };
-
-  const handleNormalToggle = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    applySelectionUpdate(
-      clearSelectionFormat(
-        textarea.value,
-        textarea.selectionStart,
-        textarea.selectionEnd,
-      ),
-    );
-  };
-
-  const selectedFormat =
-    isEditing && textareaRef.current
-      ? getSelectionFormat(
-          textareaRef.current.value,
-          textareaRef.current.selectionStart,
-          textareaRef.current.selectionEnd,
-        )
-      : { bold: false, italic: false };
+    editValue,
+    resizing,
+    dragging,
+    textareaRef,
+    measureDivRef,
+    showDeleteModal,
+    setShowDeleteModal,
+    selectedFormat,
+    handlePointerDown,
+    handlePointerMove,
+    endDrag,
+    handleSelect,
+    handleStartEditing,
+    handleTextChange,
+    handleTextBlur,
+    handleDeleteClick,
+    confirmDelete,
+    handleStrokeColorChange,
+    handleFillColorChange,
+    handleFontColorChange,
+    handleFontSizeChange,
+    handleTextAlignChange,
+    handleVerticalAlignChange,
+    handleResizePointerDown,
+    handleResizePointerMove,
+    handleResizeEnd,
+    handleAutoResize,
+    handleBoldToggle,
+    handleItalicToggle,
+    handleNormalToggle,
+  } = useCanvasElement({ element, boardId, scale, onSelect });
 
   return (
     <div
@@ -402,8 +76,6 @@ const CanvasElement = ({
       onPointerCancel={resizing ? handleResizeEnd : endDrag}
       onClick={handleSelect}
       onDoubleClick={handleStartEditing}
-      // Stop touch events from also reaching Canvas's pan/pinch
-      // handlers, which listen on the same element tree.
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
     >
@@ -437,7 +109,6 @@ const CanvasElement = ({
               color: element.fontColor || "#1F2937",
             }}
           />
-          {/* Hidden div to measure text content for auto-sizing shapes */}
           {!isTextOnly && (
             <div
               ref={measureDivRef}
@@ -491,7 +162,9 @@ const CanvasElement = ({
             </span>
           ) : (
             <span
-              className={`text-gray-400 italic text-xs ${isTextOnly ? "" : "absolute"}`}
+              className={`text-gray-400 italic text-xs ${
+                isTextOnly ? "" : "absolute"
+              }`}
             >
               {isTextOnly ? "Double-click to type" : "Double-click to add text"}
             </span>
@@ -499,8 +172,7 @@ const CanvasElement = ({
         </div>
       )}
 
-      {/* Resize buttons - bottom right corner. These stay anchored to the
-          element itself rather than moving into the floating toolbar. */}
+      {/* Resize controls */}
       <ToolbarGroup
         position="-bottom-2 -right-2"
         direction="row"
@@ -533,11 +205,7 @@ const CanvasElement = ({
         </div>
       </ToolbarGroup>
 
-      {/* Formatting controls (font size, alignment, colors, delete, and
-          bold/italic/normal while editing) render into the floating
-          second toolbar above the whiteboard instead of around the
-          element - see Canvas.jsx. Only shown while this element is
-          selected. */}
+      {/* Formatting controls toolbar portal */}
       {selected &&
         toolbarPortalNode &&
         createPortal(
@@ -558,9 +226,6 @@ const CanvasElement = ({
               />
             )}
 
-            {/* Bold/italic/normal only make sense while actively editing
-                this element's text, and each button keeps focus on the
-                textarea so clicking it doesn't blur out of edit mode. */}
             {isEditing && (
               <div className="flex items-center gap-1">
                 <ToolbarButton
