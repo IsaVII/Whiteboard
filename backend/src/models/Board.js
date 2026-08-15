@@ -33,6 +33,7 @@ const boardSchema = new mongoose.Schema(
             verticalAlign: { type: String, default: "middle" },
             formattedContent: { type: String, default: "" }, // Stores HTML-like formatting: "Text <b>bold</b> <i>italic</i>"
             manuallyResized: { type: Boolean, default: false }, // True if user has manually resized; prevents auto-resize on text edit
+            rotation: { type: Number, default: 0 }, // Rotation in degrees
           },
           { _id: false },
         ),

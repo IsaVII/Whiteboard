@@ -12,12 +12,14 @@ import {
 const DRAG_EMIT_INTERVAL_MS = 40;
 const MIN_WIDTH = 80;
 const MIN_HEIGHT = 40;
+const ROTATION_SNAP = 1; // Snap rotation to 1 degree increments
 
 export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   const dispatch = useDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [resizing, setResizing] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const [editValue, setEditValue] = useState("");
 
   const lastEmitRef = useRef(0);
@@ -25,6 +27,7 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   const measureDivRef = useRef(null);
   const pendingSelectionRef = useRef(null);
   const resizeRef = useRef(null);
+  const rotateRef = useRef(null);
 
   const isTextOnly = element.type === "text";
   const fontSize = element.fontSize || 14;
@@ -275,6 +278,80 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     }
   };
 
+  // Rotation handlers
+  const handleRotatePointerDown = (e) => {
+    if (isEditing) return;
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    // Get element center
+    const centerX = element.x + element.width / 2;
+    const centerY = element.y + element.height / 2;
+
+    rotateRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startRotation: element.rotation || 0,
+      centerX,
+      centerY,
+    };
+    setRotating(true);
+  };
+
+  const handleRotatePointerMove = (e) => {
+    if (!rotateRef.current || !rotating) return;
+    e.stopPropagation();
+
+    const { startClientX, startClientY, startRotation, centerX, centerY } =
+      rotateRef.current;
+
+    // Calculate angle from center to start point
+    const startAngle = Math.atan2(
+      startClientY - centerY,
+      startClientX - centerX,
+    );
+
+    // Calculate angle from center to current point
+    const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+
+    // Calculate rotation delta
+    let angleDelta = (currentAngle - startAngle) * (180 / Math.PI);
+
+    // Snap to nearest degree
+    angleDelta = Math.round(angleDelta / ROTATION_SNAP) * ROTATION_SNAP;
+
+    // Calculate new rotation
+    let newRotation = startRotation + angleDelta;
+
+    // Normalize to 0-360
+    newRotation = ((newRotation % 360) + 360) % 360;
+
+    emitUpdate({ rotation: newRotation });
+  };
+
+  const handleRotateEnd = (e) => {
+    if (!rotateRef.current) return;
+    e.stopPropagation();
+
+    const { startClientX, startClientY, startRotation, centerX, centerY } =
+      rotateRef.current;
+
+    // Calculate final rotation
+    const startAngle = Math.atan2(
+      startClientY - centerY,
+      startClientX - centerX,
+    );
+    const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+    let angleDelta = (currentAngle - startAngle) * (180 / Math.PI);
+    angleDelta = Math.round(angleDelta / ROTATION_SNAP) * ROTATION_SNAP;
+    let newRotation = startRotation + angleDelta;
+    newRotation = ((newRotation % 360) + 360) % 360;
+
+    emitUpdate({ rotation: newRotation }, { force: true });
+    rotateRef.current = null;
+    setRotating(false);
+  };
+
   const applySelectionUpdate = (result) => {
     if (!result) return;
     setEditValue(result.content);
@@ -341,6 +418,7 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     isEditing,
     editValue,
     resizing,
+    rotating,
     dragging,
     textareaRef,
     measureDivRef,
@@ -366,6 +444,9 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     handleResizePointerMove,
     handleResizeEnd,
     handleAutoResize,
+    handleRotatePointerDown,
+    handleRotatePointerMove,
+    handleRotateEnd,
     handleBoldToggle,
     handleItalicToggle,
     handleNormalToggle,

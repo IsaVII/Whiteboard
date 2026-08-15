@@ -24,6 +24,7 @@ const CanvasElement = ({
     isEditing,
     editValue,
     resizing,
+    rotating,
     dragging,
     textareaRef,
     measureDivRef,
@@ -49,6 +50,9 @@ const CanvasElement = ({
     handleResizePointerMove,
     handleResizeEnd,
     handleAutoResize,
+    handleRotatePointerDown,
+    handleRotatePointerMove,
+    handleRotateEnd,
     handleBoldToggle,
     handleItalicToggle,
     handleNormalToggle,
@@ -58,7 +62,7 @@ const CanvasElement = ({
     <div
       className={`absolute flex cursor-grab select-none touch-none group ${
         dragging ? "cursor-grabbing z-20" : ""
-      } ${
+      } ${rotating ? "z-20" : ""} ${
         selected
           ? "ring-2 ring-indigo-400 ring-offset-2 ring-offset-transparent"
           : ""
@@ -68,12 +72,24 @@ const CanvasElement = ({
         top: element.y,
         width: element.width,
         height: element.height,
+        transform: `rotate(${element.rotation || 0}deg)`,
+        transformOrigin: "center center",
       }}
       title={element.createdBy ? `Added by ${element.createdBy}` : undefined}
       onPointerDown={handlePointerDown}
-      onPointerMove={resizing ? handleResizePointerMove : handlePointerMove}
-      onPointerUp={resizing ? handleResizeEnd : endDrag}
-      onPointerCancel={resizing ? handleResizeEnd : endDrag}
+      onPointerMove={
+        resizing
+          ? handleResizePointerMove
+          : rotating
+            ? handleRotatePointerMove
+            : handlePointerMove
+      }
+      onPointerUp={
+        resizing ? handleResizeEnd : rotating ? handleRotateEnd : endDrag
+      }
+      onPointerCancel={
+        resizing ? handleResizeEnd : rotating ? handleRotateEnd : endDrag
+      }
       onClick={handleSelect}
       onDoubleClick={handleStartEditing}
       onTouchStart={(e) => e.stopPropagation()}
@@ -107,6 +123,8 @@ const CanvasElement = ({
               fontSize: `${fontSize}px`,
               textAlign: textAlign,
               color: element.fontColor || "#1F2937",
+              transform: `rotate(${-(element.rotation || 0)}deg)`,
+              transformOrigin: "center center",
             }}
           />
           {!isTextOnly && (
@@ -133,6 +151,8 @@ const CanvasElement = ({
           }`}
           style={{
             fontSize: `${fontSize}px`,
+            transform: `rotate(${-(element.rotation || 0)}deg)`,
+            transformOrigin: "center center",
             ...(isTextOnly
               ? {}
               : {
@@ -204,6 +224,107 @@ const CanvasElement = ({
           ⬉
         </div>
       </ToolbarGroup>
+
+      {/* Rotation controls - on all 4 edges */}
+      {selected && !isEditing && (
+        <>
+          {/* Top edge rotation handle */}
+          <div
+            onPointerDown={handleRotatePointerDown}
+            onPointerMove={rotating ? handleRotatePointerMove : undefined}
+            onPointerUp={rotating ? handleRotateEnd : undefined}
+            onPointerCancel={rotating ? handleRotateEnd : undefined}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+              rotating ? "opacity-100 cursor-grabbing" : ""
+            }`}
+            title="Drag to rotate"
+            style={{
+              top: "-12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: rotating ? "rgb(99, 102, 241)" : "white",
+              border: "1px solid #d1d5db",
+              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+              fontSize: "10px",
+            }}
+          >
+            ⤴
+          </div>
+
+          {/* Right edge rotation handle */}
+          <div
+            onPointerDown={handleRotatePointerDown}
+            onPointerMove={rotating ? handleRotatePointerMove : undefined}
+            onPointerUp={rotating ? handleRotateEnd : undefined}
+            onPointerCancel={rotating ? handleRotateEnd : undefined}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+              rotating ? "opacity-100 cursor-grabbing" : ""
+            }`}
+            title="Drag to rotate"
+            style={{
+              right: "-12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: rotating ? "rgb(99, 102, 241)" : "white",
+              border: "1px solid #d1d5db",
+              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+              fontSize: "10px",
+            }}
+          >
+            ⤳
+          </div>
+
+          {/* Bottom edge rotation handle */}
+          <div
+            onPointerDown={handleRotatePointerDown}
+            onPointerMove={rotating ? handleRotatePointerMove : undefined}
+            onPointerUp={rotating ? handleRotateEnd : undefined}
+            onPointerCancel={rotating ? handleRotateEnd : undefined}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+              rotating ? "opacity-100 cursor-grabbing" : ""
+            }`}
+            title="Drag to rotate"
+            style={{
+              bottom: "-12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: rotating ? "rgb(99, 102, 241)" : "white",
+              border: "1px solid #d1d5db",
+              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+              fontSize: "10px",
+            }}
+          >
+            ⤵
+          </div>
+
+          {/* Left edge rotation handle */}
+          <div
+            onPointerDown={handleRotatePointerDown}
+            onPointerMove={rotating ? handleRotatePointerMove : undefined}
+            onPointerUp={rotating ? handleRotateEnd : undefined}
+            onPointerCancel={rotating ? handleRotateEnd : undefined}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+              rotating ? "opacity-100 cursor-grabbing" : ""
+            }`}
+            title="Drag to rotate"
+            style={{
+              left: "-12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: rotating ? "rgb(99, 102, 241)" : "white",
+              border: "1px solid #d1d5db",
+              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+              fontSize: "10px",
+            }}
+          >
+            ⤲
+          </div>
+        </>
+      )}
 
       {/* Formatting controls toolbar portal */}
       {selected &&
