@@ -264,6 +264,7 @@ export const useCanvas = () => {
     viewport,
     selectedElementId,
     setSelectedElementId,
+    toolbarNode,
     setToolbarNode,
     showDeleteAllModal,
     setShowDeleteAllModal,

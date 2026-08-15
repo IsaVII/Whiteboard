@@ -14,6 +14,7 @@ const Canvas = () => {
     viewport,
     selectedElementId,
     setSelectedElementId,
+    toolbarNode,
     setToolbarNode,
     showDeleteAllModal,
     setShowDeleteAllModal,
@@ -59,7 +60,7 @@ const Canvas = () => {
             scale={viewport.scale}
             selected={element.id === selectedElementId}
             onSelect={() => setSelectedElementId(element.id)}
-            toolbarPortalNode={setToolbarNode}
+            toolbarPortalNode={toolbarNode}
           />
         ))}
 
