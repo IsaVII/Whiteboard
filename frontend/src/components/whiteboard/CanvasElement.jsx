@@ -64,7 +64,7 @@ const CanvasElement = ({
         dragging ? "cursor-grabbing z-20" : ""
       } ${rotating ? "z-20" : ""} ${
         selected
-          ? "ring-2 ring-indigo-400 ring-offset-2 ring-offset-transparent"
+          ? "ring-2 ring-indigo-400 ring-offset-2 ring-offset-transparent z-30"
           : ""
       }`}
       style={{

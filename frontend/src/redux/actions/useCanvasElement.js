@@ -55,18 +55,28 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   );
 
   // Dragging hook integration
-  const { dragging, handlePointerDown, handlePointerMove, endDrag } =
-    useDraggableElement({
-      x: element.x,
-      y: element.y,
-      scale,
-      disabled: isEditing,
-      onMove: emitUpdate,
-    });
+  const {
+    dragging,
+    handlePointerDown: draggableHandlePointerDown,
+    handlePointerMove,
+    endDrag,
+  } = useDraggableElement({
+    x: element.x,
+    y: element.y,
+    scale,
+    disabled: isEditing,
+    onMove: emitUpdate,
+  });
 
   const handleSelect = (e) => {
     e.stopPropagation();
     onSelect?.();
+  };
+
+  // Wrap handlePointerDown to select the element when starting to drag
+  const handlePointerDown = (e) => {
+    onSelect?.();
+    draggableHandlePointerDown(e);
   };
 
   const handleStartEditing = () => {
@@ -86,20 +96,6 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   };
 
   const handleTextBlur = () => {
-    const textarea = textareaRef.current;
-    if (!isTextOnly && textarea && !element.manuallyResized) {
-      const scrollWidth = Math.max(textarea.scrollWidth, MIN_WIDTH);
-      const scrollHeight = Math.max(textarea.scrollHeight, MIN_HEIGHT);
-
-      const padding = 16;
-      const newWidth = Math.max(scrollWidth + padding, MIN_WIDTH);
-      const newHeight = Math.max(scrollHeight + padding, MIN_HEIGHT);
-
-      if (newWidth !== element.width || newHeight !== element.height) {
-        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-      }
-    }
-
     setIsEditing(false);
     emitUpdate({ formattedContent: editValue }, { force: true });
   };
@@ -121,50 +117,6 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     textarea.setSelectionRange(start, end);
     pendingSelectionRef.current = null;
   }, [editValue, isEditing]);
-
-  // Auto-resize elements when content loads (e.g. page refresh)
-  useEffect(() => {
-    if (isEditing || element.manuallyResized || !displayContent) return;
-
-    const resizeTimer = requestAnimationFrame(() => {
-      const tempDiv = document.createElement("div");
-      tempDiv.style.visibility = "hidden";
-      tempDiv.style.position = "absolute";
-      tempDiv.style.whiteSpace = "pre-wrap";
-      tempDiv.style.wordWrap = "break-word";
-      tempDiv.style.padding = "8px";
-      tempDiv.style.fontSize = `${fontSize}px`;
-      tempDiv.style.fontFamily = "inherit";
-      tempDiv.style.lineHeight = "1.5";
-      tempDiv.textContent = displayContent;
-      document.body.appendChild(tempDiv);
-
-      const contentWidth = tempDiv.scrollWidth;
-      const contentHeight = tempDiv.scrollHeight;
-      document.body.removeChild(tempDiv);
-
-      const newWidth = Math.max(contentWidth, MIN_WIDTH);
-      const newHeight = Math.max(contentHeight, MIN_HEIGHT);
-
-      if (
-        Math.abs(newWidth - element.width) > 2 ||
-        Math.abs(newHeight - element.height) > 2
-      ) {
-        emitUpdate({ width: newWidth, height: newHeight }, { force: true });
-      }
-    });
-
-    return () => cancelAnimationFrame(resizeTimer);
-  }, [
-    displayContent,
-    isEditing,
-    element.manuallyResized,
-    element.width,
-    element.height,
-    element.id,
-    fontSize,
-    emitUpdate,
-  ]);
 
   const handleDelete = (e) => {
     e?.stopPropagation?.();
