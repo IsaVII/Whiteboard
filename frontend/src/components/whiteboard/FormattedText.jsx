@@ -1,4 +1,4 @@
-import { parseFormattedContent } from "./textFormatting";
+import { parseFormattedContent } from "../../redux/actions/textFormatting";
 
 // Renders the crude inline "<b>/<i>/<bi>/<ib>" markup as styled spans.
 // Handles nested formatting by recursively rendering parts.

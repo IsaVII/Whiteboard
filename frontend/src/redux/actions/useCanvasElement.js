@@ -7,7 +7,7 @@ import {
   getSelectionFormat,
   toggleSelectionFormat,
   clearSelectionFormat,
-} from "../../components/Canvas/textFormatting";
+} from "./textFormatting";
 
 const DRAG_EMIT_INTERVAL_MS = 40;
 const MIN_WIDTH = 80;
