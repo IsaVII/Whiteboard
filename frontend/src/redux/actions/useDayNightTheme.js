@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const useTheme = () => {
+export const useDayNightTheme = () => {
   const [theme, setTheme] = useState("light");
 
   const applyTheme = (newTheme) => {
