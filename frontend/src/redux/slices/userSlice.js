@@ -25,9 +25,17 @@ const userSlice = createSlice({
     cursorLeft(state, action) {
       delete state.cursors[action.payload.socketId];
     },
+    clearCursors(state) {
+      state.cursors = {};
+    },
   },
 });
 
-export const { setName, userListUpdated, cursorMoved, cursorLeft } =
-  userSlice.actions;
+export const {
+  setName,
+  userListUpdated,
+  cursorMoved,
+  cursorLeft,
+  clearCursors,
+} = userSlice.actions;
 export default userSlice.reducer;

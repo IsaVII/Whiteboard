@@ -21,6 +21,7 @@ import {
   userListUpdated,
   cursorMoved,
   cursorLeft,
+  clearCursors,
 } from "./redux/slices/userSlice";
 
 const SOCKET_SERVER_URL =
@@ -32,11 +33,17 @@ function App() {
   const status = useSelector((state) => state.board.status);
   const connected = useSelector((state) => state.board.connected);
   const lastEditor = useSelector((state) => state.board.lastEditor);
+  const boardId = useSelector((state) => state.board.boardId);
 
   // Load saved content from MongoDB via REST once on mount
   useEffect(() => {
     dispatch(loadBoard(DEFAULT_BOARD_ID));
   }, [dispatch]);
+
+  // Clear cursors when board changes
+  useEffect(() => {
+    dispatch(clearCursors());
+  }, [boardId, dispatch]);
 
   useEffect(() => {
     //board connection
