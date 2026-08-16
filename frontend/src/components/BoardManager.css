@@ -66,45 +66,45 @@
 }
 
 .new-board-btn {
-    background-color: #10b981;
+    background-color: var(--btn-primary);
 }
 
 .new-board-btn:hover:not(:disabled) {
-    background-color: #059669;
+    background-color: var(--btn-primary-hover);
 }
 
 .new-board-btn:active:not(:disabled) {
-    background-color: #047857;
+    background-color: var(--btn-primary-active);
 }
 
 .rename-btn {
-    background-color: #f59e0b;
+    background-color: var(--btn-secondary);
 }
 
 .rename-btn:hover:not(:disabled) {
-    background-color: #d97706;
+    background-color: var(--btn-secondary-hover);
 }
 
 .rename-btn:active:not(:disabled) {
-    background-color: #b45309;
+    background-color: var(--btn-secondary-active);
 }
 
 .confirm-btn {
-    background-color: #10b981;
+    background-color: var(--btn-primary);
     padding: 0.5rem 0.75rem;
 }
 
 .cancel-btn {
-    background-color: #ef4444;
+    background-color: var(--btn-tertiary);
     padding: 0.5rem 0.75rem;
 }
 
 .cancel-btn:hover:not(:disabled) {
-    background-color: #dc2626;
+    background-color: var(--btn-tertiary-hover);
 }
 
 .cancel-btn:active:not(:disabled) {
-    background-color: #b91c1c;
+    background-color: var(--btn-tertiary-active);
 }
 
 .dropdown-wrapper {
@@ -171,7 +171,7 @@
 
 .dropdown-item-btn {
     padding: 0.35rem 0.75rem;
-    background-color: #4f46e5;
+    background-color: var(--btn-action);
     color: white;
     border: none;
     border-radius: 3px;
@@ -182,7 +182,7 @@
 }
 
 .dropdown-item-btn:hover:not(:disabled) {
-    background-color: #4338ca;
+    background-color: var(--btn-action-hover);
 }
 
 .dropdown-item-btn:disabled {
@@ -191,20 +191,20 @@
 }
 
 .delete-btn {
-    background-color: #ef4444;
+    background-color: var(--btn-tertiary);
 }
 
 .delete-btn:hover:not(:disabled) {
-    background-color: #dc2626;
+    background-color: var(--btn-tertiary-hover);
 }
 
 .delete-btn:active:not(:disabled) {
-    background-color: #b91c1c;
+    background-color: var(--btn-tertiary-active);
 }
 
 .dropdown-item-delete-btn {
     padding: 0.35rem 0.5rem;
-    background-color: #ef4444;
+    background-color: var(--btn-tertiary);
     color: white;
     border: none;
     border-radius: 3px;
@@ -215,7 +215,7 @@
 }
 
 .dropdown-item-delete-btn:hover:not(:disabled) {
-    background-color: #dc2626;
+    background-color: var(--btn-tertiary-hover);
 }
 
 .dropdown-item-delete-btn:disabled {

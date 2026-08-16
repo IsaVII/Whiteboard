@@ -16,7 +16,7 @@
     position: absolute;
     inset: 0;
     background: rgba(255, 255, 255, 0.85);
-    border: 2px solid #6366f1;
+    border: 2px solid #8b7fd6;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     pointer-events: none;
 }
@@ -31,20 +31,18 @@
 
 .canvas-shape--star {
     border: none;
-    background: #fde68a;
+    background: #e8e0f5;
     box-shadow: none;
-    clip-path: polygon(
-        50% 0%,
-        61% 35%,
-        98% 35%,
-        68% 57%,
-        79% 91%,
-        50% 70%,
-        21% 91%,
-        32% 57%,
-        2% 35%,
-        39% 35%
-    );
+    clip-path: polygon(50% 0%,
+            61% 35%,
+            98% 35%,
+            68% 57%,
+            79% 91%,
+            50% 70%,
+            21% 91%,
+            32% 57%,
+            2% 35%,
+            39% 35%);
 }
 
 .canvas-element-content,
@@ -122,7 +120,7 @@
 }
 
 .canvas-element-delete:hover {
-    background: #fee2e2;
-    color: #b91c1c;
-    border-color: #fca5a5;
+    background: #f3eff8;
+    color: #8b7fd6;
+    border-color: #d6cce8;
 }

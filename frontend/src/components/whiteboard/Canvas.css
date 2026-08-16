@@ -2,8 +2,8 @@
     position: relative;
     width: 100%;
     min-height: 60vh;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border: 2px solid #d1d5db;
+    background: linear-gradient(135deg, #f0ecf8 0%, #e8e0f5 100%);
+    border: 2px solid #d6cce8;
     border-radius: 8px;
     overflow: hidden;
     cursor: grab;
