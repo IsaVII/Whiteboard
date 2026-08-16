@@ -16,7 +16,14 @@ const Header = () => {
       className="p-4 shadow-sm"
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-8 flex-wrap">
-        <h1 className="m-0 text-3xl font-bold min-w-fit">Whiteboard</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src={theme === "dark" ? "/icon_dark.png" : "/icon.png"}
+            alt="Whiteboard icon"
+            className="h-10 w-10"
+          />
+          <h1 className="m-0 font-bold min-w-fit">Whiteboard</h1>
+        </div>
 
         <div className="flex items-center gap-4 flex-wrap justify-center">
           <BoardManager />

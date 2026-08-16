@@ -21,7 +21,7 @@ export default function UserBadge() {
 
   // Render list of connected users with current user highlighted
   return (
-    <div className="flex flex-wrap gap-2 items-center">
+    <div className="flex flex-wrap gap-2 items-center mt-[15px]">
       <span className="font-semibold text-gray-700">Users:</span>
       {usersInRoom.map((user) => (
         <span
