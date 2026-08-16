@@ -46,6 +46,7 @@ const CanvasElement = ({
     handleFontSizeChange,
     handleTextAlignChange,
     handleVerticalAlignChange,
+    handleOutlineToggle,
     handleResizePointerDown,
     handleResizePointerMove,
     handleResizeEnd,
@@ -100,6 +101,7 @@ const CanvasElement = ({
           shapeType={element.shapeType}
           fillColor={element.fillColor}
           strokeColor={element.strokeColor}
+          showStroke={element.showStroke !== false}
         />
       )}
 
@@ -343,6 +345,7 @@ const CanvasElement = ({
                 isTextOnly={isTextOnly}
                 onStrokeColorChange={handleStrokeColorChange}
                 onFillColorChange={handleFillColorChange}
+                onOutlineToggle={handleOutlineToggle}
                 onDeleteClick={handleDeleteClick}
               />
             )}

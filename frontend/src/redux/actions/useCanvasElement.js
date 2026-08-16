@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { socket } from "../services/socket";
-import { elementUpdated, elementRemoved } from "../slices/boardSlice";
+import {
+  elementUpdated,
+  elementRemoved,
+  outlineToggled,
+} from "../slices/boardSlice";
 import { useDraggableElement } from "./useDraggableElement";
 import {
   getSelectionFormat,
@@ -158,6 +162,12 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
 
   const handleVerticalAlignChange = (align) => {
     emitUpdate({ verticalAlign: align }, { force: true });
+  };
+
+  const handleOutlineToggle = () => {
+    const newShowStroke = element.showStroke !== false ? false : true;
+    emitUpdate({ showStroke: newShowStroke }, { force: true });
+    dispatch(outlineToggled(newShowStroke));
   };
 
   const handleResizePointerDown = (e) => {
@@ -392,6 +402,7 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     handleFontSizeChange,
     handleTextAlignChange,
     handleVerticalAlignChange,
+    handleOutlineToggle,
     handleResizePointerDown,
     handleResizePointerMove,
     handleResizeEnd,

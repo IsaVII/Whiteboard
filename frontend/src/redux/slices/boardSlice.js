@@ -17,6 +17,10 @@ const boardSlice = createSlice({
     content: "",
     elements: [], // Array of {id, type, shapeType, x, y, width, height, content, createdBy}
     selectedToolType: "rectangle", // last shape picked from the toolbar dropdown
+    lastStrokeColor: "#4F46E5", // Last selected outline color
+    lastFillColor: "#FFFFFF", // Last selected fill color
+    lastFontColor: "#1F2937", // Last selected font color
+    lastShowStroke: true, // Whether new shapes should have outlines
     status: "idle", // idle | loading | ready | error
     connected: false,
     lastEditor: null,
@@ -33,6 +37,15 @@ const boardSlice = createSlice({
     // main button icon and the short-press action reflect it.
     toolTypeSelected(state, action) {
       state.selectedToolType = action.payload;
+    },
+    colorSelected(state, action) {
+      const { colorType, color } = action.payload;
+      if (colorType === "stroke") state.lastStrokeColor = color;
+      else if (colorType === "fill") state.lastFillColor = color;
+      else if (colorType === "font") state.lastFontColor = color;
+    },
+    outlineToggled(state, action) {
+      state.lastShowStroke = action.payload;
     },
     // Snapshot sent by the server right after join-board.
     elementsLoaded(state, action) {
@@ -81,6 +94,8 @@ export const {
   connectionStatusChanged,
   boardChanged,
   toolTypeSelected,
+  colorSelected,
+  outlineToggled,
   elementsLoaded,
   elementAdded,
   elementUpdated,

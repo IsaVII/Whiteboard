@@ -13,34 +13,31 @@ const OUTLINE_SHAPES = {
   pentagon: { points: "50,2 98,38 80,97 20,97 2,38" },
   arrow: { points: "2,35 60,35 60,12 98,50 60,88 60,65 2,65" },
   star: {
-    points:
-      "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35",
-    filled: true,
+    points: "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35",
     defaultFill: "#FEF3C7",
   },
   heart: {
     path: "M50,90 C15,66 2,42 2,26 C2,11 14,2 27,2 C38,2 46,8 50,19 C54,8 62,2 73,2 C86,2 98,11 98,26 C98,42 85,66 50,90 Z",
-    filled: true,
     defaultFill: "#FCA5A5",
   },
 };
 
-const ShapeBackground = ({ shapeType, fillColor, strokeColor }) => {
+const ShapeBackground = ({
+  shapeType,
+  fillColor,
+  strokeColor,
+  showStroke = true,
+}) => {
   const outline = OUTLINE_SHAPES[shapeType];
 
   if (outline) {
-    const shapeProps = outline.filled
-      ? {
-          fill: fillColor || outline.defaultFill,
-          stroke: "none",
-        }
-      : {
-          fill: fillColor || "#FFFFFF",
-          fillOpacity: 0.85,
-          stroke: strokeColor || "#4F46E5",
-          strokeWidth: 3,
-          vectorEffect: "non-scaling-stroke",
-        };
+    const shapeProps = {
+      fill: fillColor || outline.defaultFill || "#FFFFFF",
+      fillOpacity: 0.85,
+      stroke: showStroke ? strokeColor || "#4F46E5" : "none",
+      strokeWidth: 3,
+      vectorEffect: "non-scaling-stroke",
+    };
 
     return (
       <svg
@@ -66,7 +63,7 @@ const ShapeBackground = ({ shapeType, fillColor, strokeColor }) => {
       } ${shapeType === "circle" ? "rounded-full" : ""}`}
       style={{
         backgroundColor: fillColor || "#FFFFFF",
-        borderWidth: "2px",
+        borderWidth: showStroke ? "2px" : "0px",
         borderColor: strokeColor || "#4F46E5",
         opacity: 0.85,
       }}

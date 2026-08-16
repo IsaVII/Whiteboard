@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { socket } from "../../redux/services/socket";
-import { elementAdded, toolTypeSelected } from "../../redux/slices/boardSlice";
+import {
+  elementAdded,
+  toolTypeSelected,
+  outlineToggled,
+} from "../../redux/slices/boardSlice";
 import ToolbarButton from "./ToolbarButton";
 
 const SHAPE_OPTIONS = [
@@ -40,6 +44,10 @@ const Toolbar = () => {
   const userName = useSelector((state) => state.user.name);
   const selectedToolType =
     useSelector((state) => state.board.selectedToolType) || "rectangle";
+  const lastStrokeColor = useSelector((state) => state.board.lastStrokeColor);
+  const lastFillColor = useSelector((state) => state.board.lastFillColor);
+  const lastFontColor = useSelector((state) => state.board.lastFontColor);
+  const lastShowStroke = useSelector((state) => state.board.lastShowStroke);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -87,6 +95,10 @@ const Toolbar = () => {
       height: size.height,
       content: "",
       createdBy: userName || "Someone",
+      strokeColor: lastStrokeColor,
+      fillColor: lastFillColor,
+      fontColor: lastFontColor,
+      showStroke: lastShowStroke !== false,
     };
 
     // Optimistic local add; the server only echoes this to *other*
