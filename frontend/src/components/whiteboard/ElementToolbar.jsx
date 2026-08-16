@@ -19,6 +19,10 @@ const ElementToolbar = ({
   onFillColorChange,
   onOutlineToggle,
   onDuplicateClick,
+  onSendToFrontClick,
+  onSendToBackClick,
+  onMoveForwardClick,
+  onMoveBackClick,
   onDeleteClick,
 }) => {
   const lastFontColor = useSelector((state) => state.board.lastFontColor);
@@ -146,6 +150,44 @@ const ElementToolbar = ({
       >
         ◻
       </ToolbarButton>
+
+      <div className="w-px h-5 bg-gray-200" />
+
+      {/* Z-order controls */}
+      <div className="flex items-center gap-1">
+        <ToolbarButton
+          title="Send to back"
+          className="text-xs rounded"
+          onClick={onSendToBackClick}
+          aria-label="Send to back"
+        >
+          ⬇⬇
+        </ToolbarButton>
+        <ToolbarButton
+          title="Move back one"
+          className="text-xs rounded"
+          onClick={onMoveBackClick}
+          aria-label="Move back"
+        >
+          ⬇
+        </ToolbarButton>
+        <ToolbarButton
+          title="Move forward one"
+          className="text-xs rounded"
+          onClick={onMoveForwardClick}
+          aria-label="Move forward"
+        >
+          ⬆
+        </ToolbarButton>
+        <ToolbarButton
+          title="Send to front"
+          className="text-xs rounded"
+          onClick={onSendToFrontClick}
+          aria-label="Send to front"
+        >
+          ⬆⬆
+        </ToolbarButton>
+      </div>
 
       <div className="w-px h-5 bg-gray-200" />
 

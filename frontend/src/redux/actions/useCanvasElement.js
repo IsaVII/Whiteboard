@@ -29,6 +29,7 @@ function createElementId() {
 export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   const dispatch = useDispatch();
   const userName = useSelector((state) => state.user.name);
+  const allElements = useSelector((state) => state.board.elements);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [resizing, setResizing] = useState(false);
@@ -155,6 +156,34 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     // Add to local state and broadcast to other users
     dispatch(elementAdded(duplicatedElement));
     socket.emit("element-added", { boardId, element: duplicatedElement });
+  };
+
+  // Z-order (stacking) handlers
+  const getMaxZIndex = () => {
+    return allElements.reduce((max, el) => Math.max(max, el.zIndex || 0), 0);
+  };
+
+  const handleSendToFront = (e) => {
+    e?.stopPropagation?.();
+    const newZIndex = getMaxZIndex() + 1;
+    emitUpdate({ zIndex: newZIndex }, { force: true });
+  };
+
+  const handleSendToBack = (e) => {
+    e?.stopPropagation?.();
+    emitUpdate({ zIndex: -getMaxZIndex() - 1 }, { force: true });
+  };
+
+  const handleMoveForward = (e) => {
+    e?.stopPropagation?.();
+    const newZIndex = (element.zIndex || 0) + 1;
+    emitUpdate({ zIndex: newZIndex }, { force: true });
+  };
+
+  const handleMoveBack = (e) => {
+    e?.stopPropagation?.();
+    const newZIndex = (element.zIndex || 0) - 1;
+    emitUpdate({ zIndex: newZIndex }, { force: true });
   };
 
   const handleDeleteClick = (e) => {
@@ -424,6 +453,10 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     handleDeleteClick,
     confirmDelete,
     handleDuplicate,
+    handleSendToFront,
+    handleSendToBack,
+    handleMoveForward,
+    handleMoveBack,
     handleStrokeColorChange,
     handleFillColorChange,
     handleFontColorChange,

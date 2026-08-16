@@ -42,6 +42,10 @@ const CanvasElement = ({
     handleDeleteClick,
     confirmDelete,
     handleDuplicate,
+    handleSendToFront,
+    handleSendToBack,
+    handleMoveForward,
+    handleMoveBack,
     handleStrokeColorChange,
     handleFillColorChange,
     handleFontColorChange,
@@ -79,6 +83,7 @@ const CanvasElement = ({
         height: element.height,
         transform: `rotate(${element.rotation || 0}deg)`,
         transformOrigin: "center center",
+        zIndex: element.zIndex || 0,
       }}
       title={element.createdBy ? `Added by ${element.createdBy}` : undefined}
       onPointerDown={handlePointerDown}
@@ -285,6 +290,10 @@ const CanvasElement = ({
                 onFillColorChange={handleFillColorChange}
                 onOutlineToggle={handleOutlineToggle}
                 onDuplicateClick={handleDuplicate}
+                onSendToFrontClick={handleSendToFront}
+                onSendToBackClick={handleSendToBack}
+                onMoveForwardClick={handleMoveForward}
+                onMoveBackClick={handleMoveBack}
                 onDeleteClick={handleDeleteClick}
               />
             )}
