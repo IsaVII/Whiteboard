@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -37,8 +38,6 @@ const extraOrigins = (process.env.CLIENT_ORIGIN || "")
 const staticOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  "http://localhost:5174",
-  "http://127.0.0.1:5174",
   ...extraOrigins,
 ];
 
@@ -72,6 +71,15 @@ app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/boards", boardRoutes);
+
+if (NODE_ENV === "production") {
+  const frontendDist = path.join(__dirname, "../../frontend/dist");
+  app.use(express.static(frontendDist));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
 
 const server = http.createServer(app);
 
