@@ -30,11 +30,16 @@ const getSocketUrl = () => {
     }
   }
 
-  // Otherwise, dynamically construct URL using current hostname
-  const protocol = window.location.protocol;
-  const port = "4000"; // Backend port
+  // In dev, the frontend (Vite, :5173) and backend (:4000) run as separate
+  // servers, so keep pointing at the backend's dev port explicitly.
+  if (import.meta.env.DEV) {
+    return `${window.location.protocol}//${hostname}:4000`;
+  }
 
-  return `${protocol}//${hostname}:${port}`;
+  // In production (combined deployment), the backend serves the built
+  // frontend itself, so the socket connection is same-origin — no port
+  // needed.
+  return `${window.location.protocol}//${window.location.host}`;
 };
 
 const SOCKET_URL = getSocketUrl();

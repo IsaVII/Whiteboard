@@ -8,12 +8,15 @@ const getAPIUrl = () => {
     return envUrl;
   }
 
-  // Otherwise, dynamically construct URL using current hostname
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  const port = "4000"; // Backend port
+  // In dev, the frontend (Vite, :5173) and backend (:4000) run as separate
+  // servers, so keep pointing at the backend's dev port explicitly.
+  if (import.meta.env.DEV) {
+    return `${window.location.protocol}//${window.location.hostname}:4000`;
+  }
 
-  return `${protocol}//${hostname}:${port}`;
+  // In production (combined deployment), the backend serves the built
+  // frontend itself, so API calls are same-origin — no port needed.
+  return `${window.location.protocol}//${window.location.host}`;
 };
 
 const API_URL = getAPIUrl();
