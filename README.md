@@ -1,6 +1,6 @@
 # Whiteboard
 
-[WIP] A real-time collaborative whiteboard web application built to practice **React-Redux** state management and **WebSockets**, enabling multiple users to interact together on the same canvas simultaneously.
+[WIP] A real-time collaborative whiteboard web application built to practice **React-Redux** state management and **WebSockets**, enabling multiple users to draw and interact together on the same canvas simultaneously.
 
 ## Features
 
@@ -8,12 +8,13 @@
 - Centralized application state managed with Redux
 - Live cursor/interaction updates between participants
 - MongoDB connection for persisting board data
+- Debug panel for easier mobile debugging
 
 ## Screenshots
 
-| ![Screenshot 1](./screenshots/screenshot-1.jpg) | ![Screenshot 2](./screenshots/screenshot-2.jpg) |
+| ![Screenshot 1](./screenshots/screenshot-1.png) | ![Screenshot 2](./screenshots/screenshot-2.png) |
 | ----------------------------------------------- | ----------------------------------------------- |
-| ![Screenshot 3](./screenshots/screenshot-3.jpg) |
+| ![Screenshot 3](./screenshots/screenshot-3.png) |
 
 ## Tech Stack
 
