@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const http = require("http");
@@ -72,13 +73,19 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/boards", boardRoutes);
 
-if (NODE_ENV === "production") {
-  const frontendDist = path.join(__dirname, "../../frontend/dist");
+const frontendDist = path.join(__dirname, "../../frontend/dist");
+
+if (fs.existsSync(frontendDist)) {
+  console.log(`[server] Serving frontend from ${frontendDist}`);
   app.use(express.static(frontendDist));
 
   app.get("*", (req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
+} else {
+  console.warn(
+    `[server] No frontend build found at ${frontendDist} — API-only mode`,
+  );
 }
 
 const server = http.createServer(app);
