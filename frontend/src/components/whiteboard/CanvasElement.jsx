@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { useState } from "react";
 import Modal from "../Modal";
 import ToolbarButton from "./ToolbarButton";
 import ToolbarGroup from "./ToolbarGroup";
@@ -40,6 +41,7 @@ const CanvasElement = ({
     handleTextBlur,
     handleDeleteClick,
     confirmDelete,
+    handleDuplicate,
     handleStrokeColorChange,
     handleFillColorChange,
     handleFontColorChange,
@@ -58,6 +60,8 @@ const CanvasElement = ({
     handleItalicToggle,
     handleNormalToggle,
   } = useCanvasElement({ element, boardId, scale, onSelect });
+
+  const [rotateHandleHovering, setRotateHandleHovering] = useState(false);
 
   return (
     <div
@@ -237,93 +241,27 @@ const CanvasElement = ({
             onPointerUp={rotating ? handleRotateEnd : undefined}
             onPointerCancel={rotating ? handleRotateEnd : undefined}
             onDoubleClick={(e) => e.stopPropagation()}
-            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
+            onMouseEnter={() => setRotateHandleHovering(true)}
+            onMouseLeave={() => setRotateHandleHovering(false)}
+            className={`absolute w-6 h-6 rounded-full cursor-grab opacity-0 group-hover:opacity-100  flex items-center justify-center transition-opacity ${
               rotating ? "opacity-100 cursor-grabbing" : ""
             }`}
             title="Drag to rotate"
             style={{
-              top: "-12px",
+              top: "-19px",
               left: "50%",
               transform: "translateX(-50%)",
-              background: rotating ? "rgb(99, 102, 241)" : "white",
+              background: rotating
+                ? "rgb(99, 102, 241)"
+                : rotateHandleHovering
+                  ? "rgb(165, 180, 252)"
+                  : "white",
               border: "1px solid #d1d5db",
               boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              fontSize: "10px",
+              fontSize: "12px",
             }}
           >
             ⤴
-          </div>
-
-          {/* Right edge rotation handle */}
-          <div
-            onPointerDown={handleRotatePointerDown}
-            onPointerMove={rotating ? handleRotatePointerMove : undefined}
-            onPointerUp={rotating ? handleRotateEnd : undefined}
-            onPointerCancel={rotating ? handleRotateEnd : undefined}
-            onDoubleClick={(e) => e.stopPropagation()}
-            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
-              rotating ? "opacity-100 cursor-grabbing" : ""
-            }`}
-            title="Drag to rotate"
-            style={{
-              right: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: rotating ? "rgb(99, 102, 241)" : "white",
-              border: "1px solid #d1d5db",
-              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              fontSize: "10px",
-            }}
-          >
-            ⤳
-          </div>
-
-          {/* Bottom edge rotation handle */}
-          <div
-            onPointerDown={handleRotatePointerDown}
-            onPointerMove={rotating ? handleRotatePointerMove : undefined}
-            onPointerUp={rotating ? handleRotateEnd : undefined}
-            onPointerCancel={rotating ? handleRotateEnd : undefined}
-            onDoubleClick={(e) => e.stopPropagation()}
-            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
-              rotating ? "opacity-100 cursor-grabbing" : ""
-            }`}
-            title="Drag to rotate"
-            style={{
-              bottom: "-12px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: rotating ? "rgb(99, 102, 241)" : "white",
-              border: "1px solid #d1d5db",
-              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              fontSize: "10px",
-            }}
-          >
-            ⤵
-          </div>
-
-          {/* Left edge rotation handle */}
-          <div
-            onPointerDown={handleRotatePointerDown}
-            onPointerMove={rotating ? handleRotatePointerMove : undefined}
-            onPointerUp={rotating ? handleRotateEnd : undefined}
-            onPointerCancel={rotating ? handleRotateEnd : undefined}
-            onDoubleClick={(e) => e.stopPropagation()}
-            className={`absolute w-5 h-5 rounded-full cursor-grab opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity ${
-              rotating ? "opacity-100 cursor-grabbing" : ""
-            }`}
-            title="Drag to rotate"
-            style={{
-              left: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: rotating ? "rgb(99, 102, 241)" : "white",
-              border: "1px solid #d1d5db",
-              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-              fontSize: "10px",
-            }}
-          >
-            ⤲
           </div>
         </>
       )}
@@ -346,6 +284,7 @@ const CanvasElement = ({
                 onStrokeColorChange={handleStrokeColorChange}
                 onFillColorChange={handleFillColorChange}
                 onOutlineToggle={handleOutlineToggle}
+                onDuplicateClick={handleDuplicate}
                 onDeleteClick={handleDeleteClick}
               />
             )}

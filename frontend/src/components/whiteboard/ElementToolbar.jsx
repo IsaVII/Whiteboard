@@ -18,6 +18,7 @@ const ElementToolbar = ({
   onStrokeColorChange,
   onFillColorChange,
   onOutlineToggle,
+  onDuplicateClick,
   onDeleteClick,
 }) => {
   const lastFontColor = useSelector((state) => state.board.lastFontColor);
@@ -149,11 +150,20 @@ const ElementToolbar = ({
       <div className="w-px h-5 bg-gray-200" />
 
       <ToolbarButton
-        tone="danger"
+        title="Duplicate element"
+        className="text-sm leading-none rounded-full"
+        onClick={onDuplicateClick}
+        aria-label="Duplicate"
+      >
+        ⬚
+      </ToolbarButton>
+
+      <ToolbarButton
+        title="Delete"
         className="text-sm leading-none rounded-full"
         onClick={onDeleteClick}
-        title="Delete"
         aria-label="Delete"
+        tone="danger"
       >
         ×
       </ToolbarButton>

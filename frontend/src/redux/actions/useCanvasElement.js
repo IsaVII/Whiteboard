@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { socket } from "../services/socket";
 import {
   elementUpdated,
   elementRemoved,
   outlineToggled,
+  elementAdded,
 } from "../slices/boardSlice";
 import { useDraggableElement } from "./useDraggableElement";
 import {
@@ -18,8 +19,16 @@ const MIN_WIDTH = 80;
 const MIN_HEIGHT = 40;
 const ROTATION_SNAP = 1; // Snap rotation to 1 degree increments
 
+function createElementId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `el-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
   const dispatch = useDispatch();
+  const userName = useSelector((state) => state.user.name);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [resizing, setResizing] = useState(false);
@@ -128,6 +137,24 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     if (boardId) {
       socket.emit("element-removed", { boardId, elementId: element.id });
     }
+  };
+
+  const handleDuplicate = (e) => {
+    e?.stopPropagation?.();
+    if (!boardId) return;
+
+    // Create a duplicate element with offset position
+    const duplicatedElement = {
+      ...element,
+      id: createElementId(),
+      x: element.x + 20,
+      y: element.y + 20,
+      createdBy: userName || "Someone",
+    };
+
+    // Add to local state and broadcast to other users
+    dispatch(elementAdded(duplicatedElement));
+    socket.emit("element-added", { boardId, element: duplicatedElement });
   };
 
   const handleDeleteClick = (e) => {
@@ -396,6 +423,7 @@ export const useCanvasElement = ({ element, boardId, scale, onSelect }) => {
     handleTextBlur,
     handleDeleteClick,
     confirmDelete,
+    handleDuplicate,
     handleStrokeColorChange,
     handleFillColorChange,
     handleFontColorChange,
