@@ -12,9 +12,9 @@ A real-time collaborative whiteboard web application built to practice **React-R
 
 ## Screenshots
 
-| ![Screenshot 1](./screenshots/screenshot-1.png) | ![Screenshot 2](./screenshots/screenshot-2.png) |
+| ![Screenshot 1](./screenshots/screenshot-1.jpg) | ![Screenshot 2](./screenshots/screenshot-2.jpg) |
 | ----------------------------------------------- | ----------------------------------------------- |
-| ![Screenshot 3](./screenshots/screenshot-3.png) |
+| ![Screenshot 3](./screenshots/screenshot-3.jpg) |
 
 ## Tech Stack
 
