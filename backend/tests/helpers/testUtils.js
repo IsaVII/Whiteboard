@@ -33,8 +33,8 @@ export function createMockResponse() {
  */
 export function createMockBoard(overrides = {}) {
   return {
-    boardId: 'test-board',
-    content: 'Test content',
+    boardId: "test-board",
+    content: "Test content",
     elements: [],
     lastEditedBy: null,
     createdAt: new Date(),
@@ -50,20 +50,20 @@ export function createMockBoard(overrides = {}) {
 export function createMockElement(overrides = {}) {
   return {
     id: `element-${Date.now()}`,
-    type: 'textbox',
-    shapeType: 'rectangle',
+    type: "textbox",
+    shapeType: "rectangle",
     x: 10,
     y: 10,
     width: 100,
     height: 50,
-    content: 'Test',
-    createdBy: 'Test User',
-    strokeColor: '#4F46E5',
-    fillColor: '#FFFFFF',
+    content: "Test",
+    createdBy: "Test User",
+    strokeColor: "#4F46E5",
+    fillColor: "#FFFFFF",
     fontSize: 14,
-    textAlign: 'left',
-    verticalAlign: 'middle',
-    formattedContent: '',
+    textAlign: "left",
+    verticalAlign: "middle",
+    formattedContent: "",
     manuallyResized: false,
     rotation: 0,
     ...overrides,
@@ -89,5 +89,5 @@ export async function teardownTestDatabase() {
  * Wait for async operations in tests
  */
 export function wait(ms = 0) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
