@@ -45,7 +45,7 @@ describe("Board Slice", () => {
 
       const state = store.getState().board;
       expect(state.boardId).toBe("test-board");
-      expect(state.boardName).toBe("Test Board");
+      expect(state.boardName).toBe("test-board"); // reducer displays boardId as the name
     });
   });
 

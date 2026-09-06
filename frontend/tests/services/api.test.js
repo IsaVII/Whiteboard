@@ -7,7 +7,7 @@ import {
 } from "../../src/redux/services/api";
 
 // Mock fetch globally
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe("API Service", () => {
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe("API Service", () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockBoard),
+        json: vi.fn().mockResolvedValueOnce(mockBoard),
       });
 
       const result = await fetchBoard("test-board");
@@ -58,7 +58,7 @@ describe("API Service", () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockBoards),
+        json: vi.fn().mockResolvedValueOnce(mockBoards),
       });
 
       const result = await listBoards();
@@ -92,7 +92,7 @@ describe("API Service", () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockNewBoard),
+        json: vi.fn().mockResolvedValueOnce(mockNewBoard),
       });
 
       const result = await createNewBoard("new-board");
@@ -128,7 +128,7 @@ describe("API Service", () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockRenamedBoard),
+        json: vi.fn().mockResolvedValueOnce(mockRenamedBoard),
       });
 
       const result = await renameBoard("old-board", "renamed-board");
@@ -160,7 +160,7 @@ describe("API Service", () => {
 
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockResponse),
+        json: vi.fn().mockResolvedValueOnce(mockResponse),
       });
 
       const result = await deleteBoard("board-to-delete");
