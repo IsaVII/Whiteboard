@@ -1,4 +1,4 @@
-# Whiteboard
+# Whiteboard ![CI](https://github.com/IsaVII/Whiteboard/actions/workflows/test.yml/badge.svg)
 
 A real-time collaborative whiteboard web application built to practice **React-Redux** state management and **WebSockets**, enabling multiple users to draw and interact together on the same canvas simultaneously.
 
