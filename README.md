@@ -40,6 +40,32 @@ npm install
 
 Run the backend and frontend servers separately, then open the app in your browser to start drawing collaboratively.
 
+## Testing
+
+This project includes a comprehensive test suite with automated GitHub Actions CI/CD.
+
+### Quick Start
+```bash
+# Backend tests (Jest)
+cd backend
+npm test              # Run tests once
+npm run test:watch   # Watch mode
+npm run test:coverage # Coverage report
+
+# Frontend tests (Vitest)
+cd frontend
+npm test              # Run tests once
+npm run test:watch   # Watch mode
+npm run test:coverage # Coverage report
+```
+
+### Test Coverage
+- **Backend:** Utilities, Models, Controllers
+- **Frontend:** Redux state management, API services
+- **CI/CD:** Automated testing on push/pull requests
+
+📚 **Full documentation:** See [TESTING.md](./TESTING.md) and [TEST_QUICKSTART.md](./TEST_QUICKSTART.md)
+
 ## Status
 
 This project is a work in progress, built primarily as a learning exercise for React-Redux and WebSocket-based real-time multi-user interaction.
